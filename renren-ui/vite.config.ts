@@ -59,7 +59,14 @@ export default (config: UserConfig): UserConfigExport => {
       open: false, // 自动启动浏览器
       host: "0.0.0.0", // localhost
       port: 8001, // 端口号
-      hmr: { overlay: false }
+      hmr: { overlay: false },
+      proxy: {
+        "/renren-admin": {
+          target: "http://localhost:8080",
+          changeOrigin: true,
+          ws: true
+        }
+      }
     }
   });
 };

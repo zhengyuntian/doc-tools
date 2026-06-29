@@ -35,6 +35,7 @@ export const mergeServerRoute = (
       openStyle: x.openStyle,
       id: x.id,
       url: x.url,
+      hidden: x.hidden,
       matched: [...matched, { path, title: x.name }],
       ...meta
     };
@@ -101,7 +102,7 @@ export const routesToObject = (routes: any[]): IObject<RouteRecordNormalized> =>
 export const toValidRoutes = (routes: RouteRecordRaw[]): RouteRecordRaw[] => {
   const rs: RouteRecordRaw[] = [];
   routes.forEach((x: RouteRecordRaw) => {
-    if (x.meta && x.meta.isNavigationMenu !== false) {
+    if (x.meta && x.meta.isNavigationMenu !== false && Number(x.meta.hidden) !== 1) {
       if (x.children && x.children.length) {
         x.children = toValidRoutes(x.children);
       }

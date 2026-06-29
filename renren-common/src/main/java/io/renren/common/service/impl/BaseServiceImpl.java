@@ -18,6 +18,7 @@ import com.baomidou.mybatisplus.core.toolkit.Constants;
 import com.baomidou.mybatisplus.core.toolkit.ReflectionKit;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.toolkit.SqlHelper;
+import com.baomidou.mybatisplus.annotation.TableName;
 import io.renren.common.constant.Constant;
 import io.renren.common.page.PageData;
 import io.renren.common.service.BaseService;
@@ -209,11 +210,53 @@ public abstract class BaseServiceImpl<M extends BaseMapper<T>, T> implements Bas
 
     @Override
     public boolean deleteById(Serializable id) {
+        Class<T> entityClass = currentModelClass();
+        TableName tableNameAnnotation = entityClass.getAnnotation(TableName.class);
+        
+        if (tableNameAnnotation != null) {
+            String tableName = tableNameAnnotation.value();
+            if (tableName != null && tableName.toLowerCase().startsWith("t_dark_")) {
+                T entity = baseDao.selectById(id);
+                if (entity != null) {
+                    try {
+                        java.lang.reflect.Method setDelFlagMethod = entityClass.getMethod("setDelFlag", Integer.class);
+                        setDelFlagMethod.invoke(entity, 1);
+                        return updateById(entity);
+                    } catch (Exception e) {
+                        return SqlHelper.retBool(baseDao.deleteById(id));
+                    }
+                }
+                return true;
+            }
+        }
+        
         return SqlHelper.retBool(baseDao.deleteById(id));
     }
 
     @Override
     public boolean deleteBatchIds(Collection<? extends Serializable> idList) {
+        Class<T> entityClass = currentModelClass();
+        TableName tableNameAnnotation = entityClass.getAnnotation(TableName.class);
+        
+        if (tableNameAnnotation != null) {
+            String tableName = tableNameAnnotation.value();
+            if (tableName != null && tableName.toLowerCase().startsWith("t_dark_")) {
+                for (Serializable id : idList) {
+                    T entity = baseDao.selectById(id);
+                    if (entity != null) {
+                        try {
+                            java.lang.reflect.Method setDelFlagMethod = entityClass.getMethod("setDelFlag", Integer.class);
+                            setDelFlagMethod.invoke(entity, 1);
+                            updateById(entity);
+                        } catch (Exception e) {
+                            // 软删除失败，忽略
+                        }
+                    }
+                }
+                return true;
+            }
+        }
+        
         return SqlHelper.retBool(baseDao.deleteBatchIds(idList));
     }
 }

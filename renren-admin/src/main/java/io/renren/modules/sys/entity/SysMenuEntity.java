@@ -57,6 +57,10 @@ public class SysMenuEntity extends BaseEntity {
 	 */
 	private Integer sort;
 	/**
+	 * 是否隐藏（0-显示，1-隐藏）
+	 */
+	private Integer hidden;
+	/**
 	 * 更新者
 	 */
 	@TableField(fill = FieldFill.INSERT_UPDATE)

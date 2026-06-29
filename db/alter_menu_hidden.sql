@@ -1,0 +1,1 @@
+ALTER TABLE `doc_tools`.`sys_menu` ADD COLUMN `hidden` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否隐藏（0-显示，1-隐藏）' AFTER `sort`;

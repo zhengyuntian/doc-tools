@@ -43,10 +43,17 @@ public class TreeUtils {
     /**
      * 查找子节点
      */
+    @SuppressWarnings("unchecked")
     private static <T extends TreeNode> T findChildren(List<T> treeNodes, T rootNode) {
         for(T treeNode : treeNodes) {
             if(rootNode.getId().equals(treeNode.getPid())) {
-                rootNode.getChildren().add(findChildren(treeNodes, treeNode));
+                List<T> children = (List<T>) rootNode.getChildren();
+                if (children == null) {
+                    children = new ArrayList<>();
+                    rootNode.setChildren(children);
+                }
+                children.add(treeNode);
+                findChildren(treeNodes, treeNode);
             }
         }
         return rootNode;
@@ -55,6 +62,7 @@ public class TreeUtils {
     /**
      * 构建树节点
      */
+    @SuppressWarnings("unchecked")
     public static <T extends TreeNode> List<T> build(List<T> treeNodes) {
         List<T> result = new ArrayList<>();
 
@@ -67,7 +75,12 @@ public class TreeUtils {
         for(T node : nodeMap.values()) {
             T parent = nodeMap.get(node.getPid());
             if(parent != null && !(node.getId().equals(parent.getId()))){
-                parent.getChildren().add(node);
+                List<T> children = (List<T>) parent.getChildren();
+                if (children == null) {
+                    children = new ArrayList<>();
+                    parent.setChildren(children);
+                }
+                children.add(node);
                 continue;
             }
 

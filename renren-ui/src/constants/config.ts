@@ -3,8 +3,8 @@
  */
 export const themeSetting = {
   sidebar: "dark",
-  topHeader: "primary",
-  themeColor: "#17B3A3",
+  topHeader: "dark",
+  themeColor: "#3b82f6",
   navLayout: "left",
   contentFull: true,
   logoAuto: false,

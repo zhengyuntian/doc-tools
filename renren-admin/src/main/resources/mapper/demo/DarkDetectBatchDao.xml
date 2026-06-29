@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="io.renren.modules.demo.dao.DarkDetectBatchDao">
+
+    <resultMap type="io.renren.modules.demo.entity.DarkDetectBatchEntity" id="darkDetectBatchMap">
+        <result property="id" column="id"/>
+        <result property="batchNo" column="batch_no"/>
+        <result property="batchName" column="batch_name"/>
+        <result property="totalFiles" column="total_files"/>
+        <result property="passFiles" column="pass_files"/>
+        <result property="failFiles" column="fail_files"/>
+        <result property="errorFiles" column="error_files"/>
+        <result property="status" column="status"/>
+        <result property="isRelated" column="is_related"/>
+        <result property="crossAnalysisResult" column="cross_analysis_result"/>
+        <result property="resultSummary" column="result_summary"/>
+        <result property="creatorName" column="creator_name"/>
+        <result property="updaterName" column="updater_name"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="delFlag" column="del_flag"/>
+    </resultMap>
+
+
+</mapper>

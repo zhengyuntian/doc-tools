@@ -1,0 +1,1 @@
+ALTER TABLE `t_dark_detect_task` ADD COLUMN `current_rule_index` INT(11) NULL DEFAULT NULL COMMENT '当前检测规则索引（从0开始）' AFTER `total_rules`;

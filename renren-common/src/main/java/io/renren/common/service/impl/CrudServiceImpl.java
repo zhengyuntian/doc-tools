@@ -12,6 +12,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.ReflectionKit;
+import com.baomidou.mybatisplus.annotation.TableName;
 import io.renren.common.page.PageData;
 import io.renren.common.service.CrudService;
 import io.renren.common.utils.ConvertUtils;
@@ -75,6 +76,28 @@ public abstract class CrudServiceImpl<M extends BaseMapper<T>, T, D> extends Bas
 
     @Override
     public void delete(Long[] ids) {
+        Class<T> entityClass = currentModelClass();
+        TableName tableNameAnnotation = entityClass.getAnnotation(TableName.class);
+        
+        if (tableNameAnnotation != null) {
+            String tableName = tableNameAnnotation.value();
+            if (tableName != null && tableName.toLowerCase().startsWith("t_dark_")) {
+                for (Long id : ids) {
+                    T entity = baseDao.selectById(id);
+                    if (entity != null) {
+                        try {
+                            java.lang.reflect.Method setDelFlagMethod = entityClass.getMethod("setDelFlag", Integer.class);
+                            setDelFlagMethod.invoke(entity, 1);
+                            updateById(entity);
+                        } catch (Exception e) {
+                            // 软删除失败，忽略
+                        }
+                    }
+                }
+                return;
+            }
+        }
+        
         baseDao.deleteBatchIds(Arrays.asList(ids));
     }
 }

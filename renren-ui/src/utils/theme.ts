@@ -12,6 +12,11 @@ import chalkCss from "element-plus/theme-chalk/index.css?inline";
  */
 export const getThemeConfigCache = (): IObject => {
   const cache = getCache(CacheTheme, {}, {});
+  const cachedThemeColor = cache?.themeColor;
+  if (cachedThemeColor && cachedThemeColor !== "#3b82f6") {
+    localStorage.removeItem(CacheTheme);
+    return { ...themeSetting };
+  }
   return { ...themeSetting, ...cache };
 };
 

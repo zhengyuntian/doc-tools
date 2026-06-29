@@ -19,10 +19,10 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Null;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 
 import java.io.Serializable;
 import java.util.Date;
+import java.util.List;
 
 /**
  * 部门管理
@@ -31,9 +31,8 @@ import java.util.Date;
  * @since 1.0.0
  */
 @Data
-@EqualsAndHashCode(callSuper = true)
 @Schema(title = "部门管理")
-public class SysDeptDTO extends TreeNode implements Serializable {
+public class SysDeptDTO implements TreeNode, Serializable {
     private static final long serialVersionUID = 1L;
 
 	@Schema(title = "id")
@@ -65,7 +64,6 @@ public class SysDeptDTO extends TreeNode implements Serializable {
 		return id;
 	}
 
-	@Override
 	public void setId(Long id) {
 		this.id = id;
 	}
@@ -75,8 +73,22 @@ public class SysDeptDTO extends TreeNode implements Serializable {
 		return pid;
 	}
 
-	@Override
 	public void setPid(Long pid) {
 		this.pid = pid;
+	}
+
+	@Schema(title = "子部门")
+	private List<SysDeptDTO> children;
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public List<SysDeptDTO> getChildren() {
+		return children;
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public void setChildren(List<?> list) {
+		this.children = (List<SysDeptDTO>) list;
 	}
 }

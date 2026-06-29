@@ -77,3 +77,10 @@ mybatis-plus:
     prefix:
     blobType: BLOB
     boolValue: TRUE
+
+paddle:
+  ocr:
+    url: http://localhost:9292/ocr
+  table:
+    url: http://localhost:9292/table
+  enabled: false

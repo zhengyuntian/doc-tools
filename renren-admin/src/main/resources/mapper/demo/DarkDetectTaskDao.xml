@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="io.renren.modules.demo.dao.DarkDetectTaskDao">
+
+    <resultMap type="io.renren.modules.demo.entity.DarkDetectTaskEntity" id="darkDetectTaskMap">
+        <result property="id" column="id"/>
+        <result property="batchId" column="batch_id"/>
+        <result property="taskNo" column="task_no"/>
+        <result property="fileName" column="file_name"/>
+        <result property="filePath" column="file_path"/>
+        <result property="fileSize" column="file_size"/>
+        <result property="fileType" column="file_type"/>
+        <result property="fileOrder" column="file_order"/>
+        <result property="status" column="status"/>
+        <result property="totalRules" column="total_rules"/>
+        <result property="passRules" column="pass_rules"/>
+        <result property="failRules" column="fail_rules"/>
+        <result property="resultSummary" column="result_summary"/>
+        <result property="errorMsg" column="error_msg"/>
+        <result property="creatorName" column="creator_name"/>
+        <result property="updaterName" column="updater_name"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="delFlag" column="del_flag"/>
+    </resultMap>
+
+
+</mapper>

@@ -15,7 +15,10 @@
 
 ```bash
 # 切换到项目根目录
+cd renren-ui
 
+# 激活Node.js环境
+\. "$HOME/.nvm/nvm.sh"
 # 安装插件
 npm install
 

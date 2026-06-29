@@ -16,11 +16,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.Date;
 
-/**
- * 公共字段，自动填充值
- *
- * @author Mark sunlightcs@gmail.com
- */
 @Component
 public class FieldMetaObjectHandler implements MetaObjectHandler {
     private final static String CREATE_DATE = "createDate";
@@ -29,30 +24,53 @@ public class FieldMetaObjectHandler implements MetaObjectHandler {
     private final static String UPDATER = "updater";
     private final static String DEPT_ID = "deptId";
 
+    private final static String CREATE_TIME = "createTime";
+    private final static String CREATOR_NAME = "creatorName";
+    private final static String UPDATE_TIME = "updateTime";
+    private final static String UPDATER_NAME = "updaterName";
+    private final static String DEL_FLAG = "delFlag";
+
     @Override
     public void insertFill(MetaObject metaObject) {
         UserDetail user = SecurityUser.getUser();
         Date date = new Date();
 
-        //创建者
         strictInsertFill(metaObject, CREATOR, Long.class, user.getId());
-        //创建时间
         strictInsertFill(metaObject, CREATE_DATE, Date.class, date);
-
-        //创建者所属部门
         strictInsertFill(metaObject, DEPT_ID, Long.class, user.getDeptId());
-
-        //更新者
         strictInsertFill(metaObject, UPDATER, Long.class, user.getId());
-        //更新时间
         strictInsertFill(metaObject, UPDATE_DATE, Date.class, date);
+
+        if (metaObject.hasGetter(CREATOR_NAME) && metaObject.getGetterType(CREATOR_NAME) == String.class) {
+            strictInsertFill(metaObject, CREATOR_NAME, String.class, user.getRealName());
+        }
+        if (metaObject.hasGetter(CREATE_TIME) && metaObject.getGetterType(CREATE_TIME) == Date.class) {
+            strictInsertFill(metaObject, CREATE_TIME, Date.class, date);
+        }
+        if (metaObject.hasGetter(UPDATER_NAME) && metaObject.getGetterType(UPDATER_NAME) == String.class) {
+            strictInsertFill(metaObject, UPDATER_NAME, String.class, user.getRealName());
+        }
+        if (metaObject.hasGetter(UPDATE_TIME) && metaObject.getGetterType(UPDATE_TIME) == Date.class) {
+            strictInsertFill(metaObject, UPDATE_TIME, Date.class, date);
+        }
+        if (metaObject.hasGetter(DEL_FLAG) && metaObject.getGetterType(DEL_FLAG) == Integer.class) {
+            strictInsertFill(metaObject, DEL_FLAG, Integer.class, 0);
+        }
     }
 
     @Override
     public void updateFill(MetaObject metaObject) {
-        //更新者
         strictUpdateFill(metaObject, UPDATER, Long.class, SecurityUser.getUserId());
-        //更新时间
         strictUpdateFill(metaObject, UPDATE_DATE, Date.class, new Date());
+
+        UserDetail user = SecurityUser.getUser();
+        Date date = new Date();
+
+        if (metaObject.hasGetter(UPDATER_NAME) && metaObject.getGetterType(UPDATER_NAME) == String.class) {
+            strictUpdateFill(metaObject, UPDATER_NAME, String.class, user.getRealName());
+        }
+        if (metaObject.hasGetter(UPDATE_TIME) && metaObject.getGetterType(UPDATE_TIME) == Date.class) {
+            strictUpdateFill(metaObject, UPDATE_TIME, Date.class, date);
+        }
     }
 }

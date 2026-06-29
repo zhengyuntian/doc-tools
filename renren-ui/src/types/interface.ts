@@ -27,6 +27,7 @@ export interface IServerMenus {
   type: number;
   url: string;
   openStyle: number;
+  hidden?: number;
   redirect?: string;
   children?: IServerMenus[];
 }

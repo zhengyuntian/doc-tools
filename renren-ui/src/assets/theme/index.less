@@ -933,3 +933,106 @@
     height: 0;
   }
 }
+
+//深色主题主内容区样式
+.rr-view-container {
+  background: #f1f5f9;
+}
+
+.rr-view {
+  background: #f1f5f9;
+  padding: 20px;
+}
+
+//深色顶栏下的弹出组件深色样式
+.ui-topHeader-dark {
+  .el-dropdown-menu {
+    background: #1e293b;
+    border-color: #475569;
+    .el-dropdown-menu__item {
+      color: #cbd5e1;
+      &:hover {
+        background: #3b82f6;
+        color: #fff;
+      }
+    }
+  }
+  
+  .el-popover {
+    background: #1e293b;
+    border-color: #475569;
+    .el-popover__title {
+      color: #f1f5f9;
+    }
+    .el-popover__content {
+      color: #cbd5e1;
+    }
+  }
+  
+  .el-tooltip__popper {
+    background: #1e293b !important;
+    border-color: #475569 !important;
+    color: #cbd5e1 !important;
+  }
+}
+
+//深色侧边栏下的弹出组件
+.ui-sidebar-dark {
+  .el-dropdown-menu {
+    background: #1e293b;
+    border-color: #475569;
+    .el-dropdown-menu__item {
+      color: #cbd5e1;
+      &:hover {
+        background: #3b82f6;
+        color: #fff;
+      }
+    }
+  }
+}
+
+//全局弹出组件深色样式
+.el-message-box {
+  --el-message-box-bg-color: #1e293b;
+  --el-message-box-border-color: #475569;
+  
+  .el-message-box__header {
+    border-bottom-color: #475569;
+    .el-message-box__title {
+      color: #f1f5f9;
+    }
+  }
+  .el-message-box__message {
+    color: #cbd5e1;
+  }
+}
+
+.el-notification {
+  --el-notification-bg-color: #1e293b;
+  --el-notification-border-color: #475569;
+  
+  .el-notification__title {
+    color: #f1f5f9;
+  }
+  .el-notification__content {
+    color: #cbd5e1;
+  }
+}
+
+.el-message {
+  --el-message-bg-color: #1e293b;
+  --el-message-border-color: #475569;
+  --el-message-text-color: #cbd5e1;
+}
+
+//Element Plus主题色统一
+.el-button {
+  &.el-button--primary {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    &:hover {
+      background: #2563eb;
+      border-color: #2563eb;
+    }
+  }
+}

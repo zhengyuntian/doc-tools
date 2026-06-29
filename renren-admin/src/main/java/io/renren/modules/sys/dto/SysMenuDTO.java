@@ -19,11 +19,11 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Null;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import org.hibernate.validator.constraints.Range;
 
 import java.io.Serializable;
 import java.util.Date;
+import java.util.List;
 
 /**
  * 菜单管理
@@ -32,9 +32,8 @@ import java.util.Date;
  * @since 1.0.0
  */
 @Data
-@EqualsAndHashCode(callSuper = true)
 @Schema(title = "菜单管理")
-public class SysMenuDTO extends TreeNode<SysMenuDTO> implements Serializable {
+public class SysMenuDTO implements TreeNode, Serializable {
     private static final long serialVersionUID = 1L;
 
 	@Schema(title = "id")
@@ -67,6 +66,9 @@ public class SysMenuDTO extends TreeNode<SysMenuDTO> implements Serializable {
 	@Min(value = 0, message = "{sort.number}", groups = DefaultGroup.class)
 	private Integer sort;
 
+	@Schema(title = "是否隐藏（0-显示，1-隐藏）")
+	private Integer hidden;
+
 	@Schema(title = "创建时间")
 	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
 	private Date createDate;
@@ -74,12 +76,15 @@ public class SysMenuDTO extends TreeNode<SysMenuDTO> implements Serializable {
 	@Schema(title = "上级菜单名称")
 	private String parentName;
 
+	@Schema(title = "子菜单")
+	@JsonProperty(access = JsonProperty.Access.READ_WRITE)
+	private List<SysMenuDTO> children;
+
 	@Override
 	public Long getId() {
 		return id;
 	}
 
-	@Override
 	public void setId(Long id) {
 		this.id = id;
 	}
@@ -89,9 +94,20 @@ public class SysMenuDTO extends TreeNode<SysMenuDTO> implements Serializable {
 		return pid;
 	}
 
-	@Override
 	public void setPid(Long pid) {
 		this.pid = pid;
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public List<SysMenuDTO> getChildren() {
+		return children;
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public void setChildren(List<?> list) {
+		this.children = (List<SysMenuDTO>) list;
 	}
 
 }

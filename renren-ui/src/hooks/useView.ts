@@ -239,7 +239,8 @@ const useView = (props: IViewHooksOptions | IObject): IViewHooks => {
   //
   return {
     ...viewFns,
-    ...rejectFns
+    ...rejectFns,
+    ...state
   };
 };
 

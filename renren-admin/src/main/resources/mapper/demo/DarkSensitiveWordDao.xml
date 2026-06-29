@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="io.renren.modules.demo.dao.DarkSensitiveWordDao">
+
+    <resultMap type="io.renren.modules.demo.entity.DarkSensitiveWordEntity" id="darkSensitiveWordMap">
+        <result property="id" column="id"/>
+        <result property="categoryId" column="category_id"/>
+        <result property="categoryName" column="category_name"/>
+        <result property="word" column="word"/>
+        <result property="enabled" column="enabled"/>
+        <result property="creatorName" column="creator_name"/>
+        <result property="updaterName" column="updater_name"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="delFlag" column="del_flag"/>
+    </resultMap>
+
+    <select id="selectPageWithCategory" resultMap="darkSensitiveWordMap">
+        SELECT w.*, c.category_name
+        FROM t_dark_sensitive_word w
+        LEFT JOIN t_dark_sensitive_category c ON w.category_id = c.id
+        WHERE 1=1
+        <if test="word != null and word != ''">
+            AND w.word LIKE CONCAT('%', #{word}, '%')
+        </if>
+        <if test="categoryId != null">
+            AND w.category_id = #{categoryId}
+        </if>
+        <if test="enabled != null">
+            AND w.enabled = #{enabled}
+        </if>
+        ORDER BY w.update_time DESC
+    </select>
+
+</mapper>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="io.renren.modules.demo.dao.DarkDetectCrossResultDao">
+
+    <resultMap type="io.renren.modules.demo.entity.DarkDetectCrossResultEntity" id="darkDetectCrossResultMap">
+        <result property="id" column="id"/>
+        <result property="batchId" column="batch_id"/>
+        <result property="analysisType" column="analysis_type"/>
+        <result property="analysisName" column="analysis_name"/>
+        <result property="involvedFiles" column="involved_files"/>
+        <result property="actualValue" column="actual_value"/>
+        <result property="expectedValue" column="expected_value"/>
+        <result property="isPass" column="is_pass"/>
+        <result property="severity" column="severity"/>
+        <result property="remark" column="remark"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+
+</mapper>

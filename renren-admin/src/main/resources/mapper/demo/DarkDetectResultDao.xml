@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="io.renren.modules.demo.dao.DarkDetectResultDao">
+
+    <resultMap type="io.renren.modules.demo.entity.DarkDetectResultEntity" id="darkDetectResultMap">
+        <result property="id" column="id"/>
+        <result property="taskId" column="task_id"/>
+        <result property="ruleCode" column="rule_code"/>
+        <result property="ruleName" column="rule_name"/>
+        <result property="ruleCategory" column="rule_category"/>
+        <result property="pageNo" column="page_no"/>
+        <result property="paragraphIndex" column="paragraph_index"/>
+        <result property="actualValue" column="actual_value"/>
+        <result property="expectedValue" column="expected_value"/>
+        <result property="isPass" column="is_pass"/>
+        <result property="severity" column="severity"/>
+        <result property="remark" column="remark"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+
+</mapper>

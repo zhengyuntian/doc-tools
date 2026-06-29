@@ -13,6 +13,7 @@ import com.baomidou.mybatisplus.extension.plugins.inner.BlockAttackInnerIntercep
 import com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import io.renren.common.interceptor.DataFilterInterceptor;
+import io.renren.common.interceptor.DarkSoftDeleteInterceptor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -28,6 +29,8 @@ public class MybatisPlusConfig {
     @Bean
     public MybatisPlusInterceptor mybatisPlusInterceptor() {
         MybatisPlusInterceptor mybatisPlusInterceptor = new MybatisPlusInterceptor();
+        // 暗标业务表软删除拦截器（放在最前面，最先拦截）
+        mybatisPlusInterceptor.addInnerInterceptor(new DarkSoftDeleteInterceptor());
         // 数据权限
         mybatisPlusInterceptor.addInnerInterceptor(new DataFilterInterceptor());
         // 分页插件

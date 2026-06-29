@@ -45,7 +45,6 @@ public class WebMvcConfig implements WebMvcConfigurer {
     public SimpleModule customSerializerModule() {
         SimpleModule module = new SimpleModule("CustomSerializerModule");
 
-        // 日期时间序列化
         module.addSerializer(LocalDateTime.class,
                 new LocalDateTimeSerializer(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
         module.addSerializer(LocalDate.class,
@@ -53,7 +52,6 @@ public class WebMvcConfig implements WebMvcConfigurer {
         module.addSerializer(LocalTime.class,
                 new LocalTimeSerializer(DateTimeFormatter.ofPattern("HH:mm:ss")));
 
-        // 日期时间反序列化
         module.addDeserializer(LocalDateTime.class,
                 new LocalDateTimeDeserializer(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
         module.addDeserializer(LocalDate.class,
@@ -61,16 +59,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
         module.addDeserializer(LocalTime.class,
                 new LocalTimeDeserializer(DateTimeFormatter.ofPattern("HH:mm:ss")));
 
-        // Long 类型序列化为 String，解决前端 js 精度丢失问题
         module.addSerializer(Long.class, ToStringSerializer.instance);
         module.addSerializer(Long.TYPE, ToStringSerializer.instance);
 
         return module;
     }
 
-    /**
-     * 自定义 JsonMapper 构建器配置
-     */
     @Bean
     public JsonMapperBuilderCustomizer jsonMapperBuilderCustomizer() {
         return builder -> builder

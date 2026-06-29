@@ -56,4 +56,11 @@ public class SecurityUser {
     public static Long getDeptId() {
         return getUser().getDeptId();
     }
+
+    /**
+     * 获取用户真实姓名
+     */
+    public static String getRealName() {
+        return getUser().getRealName();
+    }
 }
