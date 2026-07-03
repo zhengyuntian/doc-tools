@@ -18,6 +18,8 @@ import io.renren.modules.demo.service.DarkDetectTaskService;
 import io.renren.modules.demo.util.DocxAnnotationUtils;
 import io.renren.modules.demo.util.PdfAnnotationUtils;
 import org.apache.shiro.authz.annotation.RequiresPermissions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
@@ -43,6 +45,9 @@ import java.util.Map;
 @RequestMapping("demo/darkdetecttask")
 @Tag(name="暗标检测任务管理")
 public class DarkDetectTaskController {
+    
+    private static final Logger logger = LoggerFactory.getLogger(DarkDetectTaskController.class);
+    
     @Autowired
     private DarkDetectTaskService darkDetectTaskService;
 
@@ -160,8 +165,7 @@ public class DarkDetectTaskController {
                     downloadFile = PdfAnnotationUtils.addAnnotations(task.getFilePath(), results);
                 }
             } catch (Exception e) {
-                System.out.println("[下载文件] 添加标注失败: " + e.getMessage());
-                e.printStackTrace();
+                logger.error("[下载文件] 添加标注失败: {}", e.getMessage(), e);
                 downloadFile = file;
             }
         }
@@ -191,6 +195,15 @@ public class DarkDetectTaskController {
     @RequiresPermissions("demo:darkdetectbatch:page")
     public Result start(@PathVariable("id") Long id) {
         darkDetectTaskService.startSingleTask(id);
+        return new Result();
+    }
+
+    @PostMapping("{id}/stop")
+    @Operation(summary = "停止检测")
+    @LogOperation("停止检测")
+    @RequiresPermissions("demo:darkdetectbatch:page")
+    public Result stop(@PathVariable("id") Long id) {
+        darkDetectTaskService.stopTask(id);
         return new Result();
     }
 

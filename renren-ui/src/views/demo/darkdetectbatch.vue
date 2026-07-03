@@ -81,6 +81,9 @@
       <el-form-item>
         <el-button v-if="state.hasPermission('demo:darkdetectbatch:delete')" type="danger" @click="state.deleteHandle()">删除</el-button>
       </el-form-item>
+      <el-form-item>
+        <el-button @click="state.getDataList()">刷新</el-button>
+      </el-form-item>
     </el-form>
 
     <el-table v-loading="state.dataListLoading" :data="state.dataList" border @selection-change="state.dataListSelectionChangeHandle" @expand-change="handleExpandChange" style="width: 100%">
@@ -92,7 +95,8 @@
             <el-button type="text" size="small" style="margin-left: 10px;" @click="loadBatchTasks(scope.row.id)">重新加载</el-button>
           </div>
           <div v-else-if="taskDataMap.has(scope.row.id)">
-            <el-table :data="taskDataMap.get(scope.row.id) || []" border style="width: 100%">
+            <el-table :data="taskDataMap.get(scope.row.id) || []" border>
+              <el-table-column width="100"></el-table-column>
               <el-table-column prop="fileName" label="文件名" header-align="center" align="center" width="150" show-overflow-tooltip></el-table-column>
               <el-table-column prop="fileType" label="文件类型" header-align="center" align="center" width="100">
                 <template v-slot="scope">
@@ -320,42 +324,20 @@ const getStatistics = () => {
   });
 };
 
-let refreshTimer: number | null = null;
-
-const refreshExpandedTasks = () => {
-  taskDataMap.forEach((_, batchId) => {
-    baseService.get('/demo/darkdetecttask/page', { batchId, page: 1, limit: 999 }).then((res: any) => {
-      taskDataMap.set(batchId, res.data.list || []);
-    });
-  });
-};
-
 onMounted(() => {
   state.getDataList();
   getStatistics();
-  
-  refreshTimer = window.setInterval(() => {
-    const dataList = state.dataList || [];
-    const hasDetecting = dataList.some((item: any) => item.status === 3);
-    if (hasDetecting) {
-      state.getDataList();
-      getStatistics();
-      if (taskDataMap.size > 0) {
-        refreshExpandedTasks();
-      }
-    }
-  }, 5000);
 });
 
 onUnmounted(() => {
-  if (refreshTimer) {
-    window.clearInterval(refreshTimer);
-    refreshTimer = null;
-  }
 });
 </script>
 
 <style scoped>
+.mod-demo__darkdetectbatch :deep(.el-table__expanded-cell) {
+  padding: 0 !important;
+}
+
 .stat-card {
   display: flex;
   align-items: center;

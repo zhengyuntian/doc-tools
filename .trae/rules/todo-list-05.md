@@ -109,12 +109,15 @@
 
 ## 待验证模块 ⏳
 
-### OCR识别服务 ⏳
-- [ ] OCR服务选型验证（Tesseract/百度OCR/阿里OCR）
-- [ ] 图片文字识别功能测试
-- [ ] 图片中的敏感词检测测试
-- [ ] 图片中的格式违规检测测试
-- [ ] OCR结果与规则引擎对接测试
+### 八、OCR识别服务 ✅
+- [x] OCR服务选型（SmartJavaAI + PP-OCRv5 + SLANET）
+- [x] 本地OCR服务集成（DJL + OnnxRuntime）
+- [x] 图片文字识别功能实现
+- [x] 图片表格结构识别功能实现
+- [x] OCR与规则引擎对接
+- [x] 禁止表格图片检测规则（TABLE_IMAGE_FORBIDDEN）
+- [x] SmartJavaAI Config类覆盖（解决PyTorch强制加载问题）
+- [x] 模型加载配置（文本检测+方向分类+文字识别+表格识别）
 
 ### 关联分析模块 ⏳
 - [x] 关联分析结果表（t_dark_detect_cross_result）
@@ -190,4 +193,4 @@
 - 数据库：MySQL 8
 - 文档解析：Apache POI 5.2.5
 - PDF解析：Apache PDFBox 3.0.x
-- OCR：待选型测试
+- OCR：SmartJavaAI 1.0.23 + DJL 0.34.0 + OnnxRuntime 1.20.0

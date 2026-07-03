@@ -39,6 +39,7 @@
 
     <el-form :inline="true" :model="state.dataForm" style="margin-bottom: 15px;">
       <el-form-item>
+        <el-button @click="state.getDataList()">刷新</el-button>
         <el-button v-if="state.hasPermission('demo:darkdetecttask:delete')" type="danger" @click="state.deleteHandle()">删除</el-button>
       </el-form-item>
     </el-form>
@@ -109,7 +110,7 @@
           <el-button v-if="state.hasPermission('demo:darkdetecttask:info')" type="primary" link @click="downloadHandle(scope.row)">下载</el-button>
           <el-button v-if="state.hasPermission('demo:darkdetecttask:info')" type="primary" link @click="detailHandle(scope.row)">详情</el-button>
           <el-button v-if="state.hasPermission('demo:darkdetecttask:update') && scope.row.status === 0" type="success" link @click="startDetectHandle(scope.row)">启动检测</el-button>
-          <el-button v-if="state.hasPermission('demo:darkdetecttask:update') && scope.row.status === 1" type="warning" link disabled>检测中</el-button>
+          <el-button v-if="state.hasPermission('demo:darkdetecttask:update') && scope.row.status === 1" type="warning" link @click="stopDetectHandle(scope.row)">停止检测</el-button>
           <el-button v-if="state.hasPermission('demo:darkdetecttask:update') && scope.row.status === 3" type="success" link @click="retryHandle(scope.row)">重试</el-button>
           <el-button v-if="state.hasPermission('demo:darkdetecttask:update') && scope.row.status === 2" type="warning" link @click="retryHandle(scope.row)">再次检测</el-button>
           <el-button v-if="state.hasPermission('demo:darkdetecttask:delete')" type="danger" link @click="state.deleteHandle(scope.row.id)">删除</el-button>
@@ -158,14 +159,16 @@ import useView from "@/hooks/useView";
 import { reactive, ref, toRefs, onMounted, onUnmounted } from "vue";
 import { Document } from "@element-plus/icons-vue";
 import baseService from "@/service/baseService";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 
 const view = reactive({
   deleteIsBatch: true,
   getDataListURL: "/demo/darkdetecttask/page",
   getDataListIsPage: true,
   exportURL: "/demo/darkdetecttask/export",
-  deleteURL: "/demo/darkdetecttask"
+  deleteURL: "/demo/darkdetecttask",
+  order: "desc",
+  orderField: "createTime"
 });
 
 const state = reactive({ 
@@ -213,6 +216,19 @@ const startDetectHandle = (row: any) => {
   });
 };
 
+const stopDetectHandle = (row: any) => {
+  ElMessageBox.confirm('确认停止检测？停止后可以重新开始检测。', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(() => {
+    baseService.post('/demo/darkdetecttask/' + row.id + '/stop').then(() => {
+      ElMessage.success('已停止检测');
+      state.getDataList();
+    });
+  }).catch(() => {});
+};
+
 const formatSize = (size: number) => {
   if (!size) return '-';
   if (size < 1024) {
@@ -256,30 +272,9 @@ onMounted(() => {
     state.dataForm.batchId = parseInt(batchIdParam);
   }
   state.getDataList();
-  
-  // 启动自动刷新（当有检测中的任务时每5秒刷新）
-  startAutoRefresh();
 });
 
-// 自动刷新定时器
-let refreshTimer: number | null = null;
-
-const startAutoRefresh = () => {
-  refreshTimer = window.setInterval(() => {
-    // 检查是否有检测中的任务
-    const dataList = state.dataList || [];
-    const hasDetecting = dataList.some((item: any) => item.status === 1);
-    if (hasDetecting) {
-      state.getDataList();
-    }
-  }, 5000);
-};
-
 onUnmounted(() => {
-  if (refreshTimer) {
-    window.clearInterval(refreshTimer);
-    refreshTimer = null;
-  }
 });
 </script>
 

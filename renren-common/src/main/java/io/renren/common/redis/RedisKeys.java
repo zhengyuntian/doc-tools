@@ -61,4 +61,18 @@ public class RedisKeys {
     public static String getUserPermissionsKey(Long userId){
         return "sys:user:permissions:" + userId;
     }
+
+    /**
+     * 用户Token Key
+     */
+    public static String getUserTokenKey(String token){
+        return "sys:user:token:" + token;
+    }
+
+    /**
+     * 用户信息Key
+     */
+    public static String getUserInfoKey(Long userId){
+        return "sys:user:info:" + userId;
+    }
 }

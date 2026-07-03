@@ -162,9 +162,9 @@ const batchStatus = ref<Record<string, number>>({})
 const recentBatches = ref<any[]>([])
 
 const totalBatches = computed(() => {
-  return (batchStatus.value.processing || 0) + 
-         (batchStatus.value.completed || 0) + 
-         (batchStatus.value.failed || 0)
+  return Number(batchStatus.value.processing || 0) + 
+         Number(batchStatus.value.completed || 0) + 
+         Number(batchStatus.value.failed || 0)
 })
 
 const getCompletedDash = () => {

@@ -1,0 +1,90 @@
+# Tomcat
+server:
+  tomcat:
+    uri-encoding: UTF-8
+    threads:
+      max: 1000
+      min-spare: 30
+  port: 8080
+  servlet:
+    context-path: /renren-admin
+    session:
+      cookie:
+        http-only: true
+
+knife4j:
+  enable: false
+  basic:
+    enable: false
+    username: admin
+    password: admin
+  setting:
+    enableFooter: false
+
+spring:
+  # 环境 dev|test|prod
+  profiles:
+    active: dev
+  messages:
+    encoding: UTF-8
+    basename: i18n/messages
+  mvc:
+    pathmatch:
+      matching-strategy: ANT_PATH_MATCHER
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+      enabled: true
+  jackson:
+    time-zone: GMT+8
+    date-format: yyyy-MM-dd HH:mm:ss
+
+  data:
+    redis:
+      database: 1
+      host: 120.53.19.128
+      port: 16379
+      password: 'shijiazhuang@123'
+      timeout: 10000ms
+      connect-timeout: 10000ms
+      socket-timeout: 10000ms
+      lettuce:
+        pool:
+          max-active: 50
+          max-wait: 3000ms
+          max-idle: 20
+          min-idle: 5
+          time-between-eviction-runs: 60000ms
+        shutdown-timeout: 100ms
+
+# 是否开启redis缓存  true开启   false关闭
+renren:
+  redis:
+    open: true
+
+#mybatis
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  #实体扫描，多个package用逗号或者分号分隔
+  typeAliasesPackage: io.renren.modules.*.entity
+  global-config:
+    #数据库相关配置
+    db-config:
+      #主键类型
+      id-type: ASSIGN_ID
+    banner: false
+  #原生配置
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+    call-setters-on-nulls: true
+    jdbc-type-for-null: 'null'
+  configuration-properties:
+    prefix:
+    blobType: BLOB
+    boolValue: TRUE
+
+paddle:
+  enabled: ${PADDLE_ENABLED:true}
+  model.path: ${PADDLE_MODEL_PATH:/Users/admin/IdeaProjects/docTools/models}

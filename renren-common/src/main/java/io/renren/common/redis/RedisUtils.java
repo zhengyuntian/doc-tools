@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -122,5 +123,13 @@ public class RedisUtils {
 
     public Object rightPop(String key) {
         return redisTemplate.opsForList().rightPop(key);
+    }
+
+    public Set<String> keys(String pattern) {
+        return redisTemplate.keys(pattern);
+    }
+
+    public Collection<Object> mget(Collection<String> keys) {
+        return redisTemplate.opsForValue().multiGet(keys);
     }
 }

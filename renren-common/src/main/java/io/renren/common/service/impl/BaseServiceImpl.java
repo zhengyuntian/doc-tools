@@ -74,6 +74,11 @@ public abstract class BaseServiceImpl<M extends BaseMapper<T>, T> implements Bas
         String orderField = (String) params.get(Constant.ORDER_FIELD);
         String order = (String) params.get(Constant.ORDER);
 
+        // 将驼峰命名转换为下划线命名
+        if (StrUtil.isNotBlank(orderField)) {
+            orderField = orderField.replaceAll("([A-Z])", "_$1").toLowerCase();
+        }
+
         //前端字段排序
         if (StrUtil.isNotBlank(orderField) && StrUtil.isNotBlank(order)) {
             if (Constant.ASC.equalsIgnoreCase(order)) {
