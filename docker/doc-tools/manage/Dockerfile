@@ -15,19 +15,6 @@ RUN mkdir -p /app /app/models /tmp/djl_cache /tmp/pytorch_cache
 COPY ./bin /app
 COPY ./conf /app/conf
 COPY ./lib/doc-tools.jar /app/doc-tools.jar
-COPY ./models /app/models
-
-WORKDIR /app/models/ppocr_v5_det
-RUN ln -sf PP-OCRv5_server_det.onnx model.onnx
-
-WORKDIR /app/models/ppocr_v5_rec
-RUN ln -sf PP-OCRv5_server_rec.onnx model.onnx
-
-WORKDIR /app/models/ppocr_mobile_v2_cls
-RUN ln -sf ch_ppocr_mobile_v2.0_cls.onnx model.onnx
-
-WORKDIR /app/models/slanet_plus
-RUN ln -sf slanet-plus.onnx model.onnx
 
 WORKDIR /app
 

@@ -37,11 +37,11 @@ public class DarkRuleSchemeDTO implements Serializable {
 	private String updaterName;
 
 	@SchemaProperty(name = "创建时间")
-	@JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+	@JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
 	private Date createTime;
 
 	@SchemaProperty(name = "更新时间")
-	@JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+	@JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
 	private Date updateTime;
 
 	@SchemaProperty(name = "方案包含的规则配置项")

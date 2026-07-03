@@ -30,9 +30,9 @@ public class ChartRuleExecutor implements RuleExecutor {
                 List<ParsedImage> images = document.getImages();
                 if (images != null && !images.isEmpty()) {
                     for (int i = 0; i < images.size(); i++) {
-                        results.add(createResult(ruleCode, ruleName, "chart", 1, i,
-                                "has_chart", "no_chart", "检测到图表/图片" + (i + 1)));
-                        if (results.size() >= 10) break;
+                        ParsedImage image = images.get(i);
+                        results.add(createResult(ruleCode, ruleName, "chart", image.getPageNo(), i,
+                                "检测到图片", "禁止图片", "检测到图片"));
                     }
                 }
             }

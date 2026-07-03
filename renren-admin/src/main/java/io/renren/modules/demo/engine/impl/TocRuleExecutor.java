@@ -11,6 +11,8 @@ import java.util.List;
 
 @Component
 public class TocRuleExecutor implements RuleExecutor {
+    
+    private ParsedDocument document;
 
     @Override
     public List<DarkDetectResultEntity> execute(ParsedDocument document, DarkRuleConfigEntity rule) {
@@ -19,6 +21,8 @@ public class TocRuleExecutor implements RuleExecutor {
         String ruleName = rule.getRuleName();
         String paramKey = rule.getParamKey();
         String expectedValue = rule.getParamValue();
+        
+        this.document = document;
 
         if (ruleCode == null || expectedValue == null) {
             return results;
@@ -31,7 +35,7 @@ public class TocRuleExecutor implements RuleExecutor {
                     String fullText = document.getFullText();
                     if (fullText != null && fullText.contains("目录")) {
                         results.add(createResult(ruleCode, ruleName, "toc", 1, 1,
-                                "show_page_numbers", "hide_page_numbers", "目录显示了页码"));
+                                "显示页码", "隐藏页码", "目录显示了页码"));
                     }
                 }
             } else if ("no_strikethrough".equals(paramKey)) {
@@ -40,7 +44,7 @@ public class TocRuleExecutor implements RuleExecutor {
                     String fullText = document.getFullText();
                     if (fullText != null && fullText.contains("目录")) {
                         results.add(createResult(ruleCode, ruleName, "toc", 1, 1,
-                                "check", "no_strikethrough", "目录检查通过"));
+                                "检查通过", "无删除线", "目录检查通过"));
                     }
                 }
             }
@@ -68,7 +72,8 @@ public class TocRuleExecutor implements RuleExecutor {
         result.setRuleCategory(category);
         result.setIsPass(0);
         result.setSeverity(1);
-        result.setPageNo(pageNo);
+        int logicalPageNo = document.getLogicalPageNo(pageNo);
+        result.setPageNo(logicalPageNo);
         result.setParagraphIndex(index);
         result.setActualValue(actualValue);
         result.setExpectedValue(expectedValue);

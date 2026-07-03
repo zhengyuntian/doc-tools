@@ -3,19 +3,31 @@
 projectName=doc-tools
 externalPort=8081
 internalPort=8080
-docker stop $projectName
-docker rm $projectName
+
+docker stop $projectName 2>/dev/null
+docker rm $projectName 2>/dev/null
+
 version=$1
+if [ -z "$version" ]; then
+    version="latest"
+fi
+
 docker build -f Dockerfile -t $projectName:$version .
+
 docker run --name $projectName --privileged=true --restart=always \
   -p $externalPort:$internalPort \
   -e SPRING_PROFILES_ACTIVE=prod \
+  -e SPRING_DATASOURCE_DRUID_URL=jdbc:mysql://host.docker.internal:3306/renren_security?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true \
+  -e SPRING_DATASOURCE_DRUID_USERNAME=renren \
+  -e SPRING_DATASOURCE_DRUID_PASSWORD=123456 \
   -e PADDLE_ENABLED=true \
   -e PADDLE_MODEL_PATH=/app/models \
   -e DJL_CACHE_DIR=/tmp/djl_cache \
   -e DJL_DEFAULT_ENGINE=OnnxRuntime \
   -e ai.djl.onnx.disable_alternative=true \
   -v $(pwd)/models:/app/models \
+  -v $(pwd)/upload:/app/upload \
   -v $(pwd)/logs:/app/logs \
   -d $projectName:$version
+
 docker logs -f -t $projectName

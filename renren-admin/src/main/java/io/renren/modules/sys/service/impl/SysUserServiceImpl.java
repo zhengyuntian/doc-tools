@@ -15,6 +15,7 @@ import io.renren.common.page.PageData;
 import io.renren.common.service.impl.BaseServiceImpl;
 import io.renren.common.utils.ConvertUtils;
 import io.renren.modules.security.password.PasswordUtils;
+import io.renren.modules.security.service.ShiroService;
 import io.renren.modules.security.user.SecurityUser;
 import io.renren.modules.security.user.UserDetail;
 import io.renren.modules.sys.dao.SysUserDao;
@@ -24,7 +25,6 @@ import io.renren.modules.sys.enums.SuperAdminEnum;
 import io.renren.modules.sys.service.SysDeptService;
 import io.renren.modules.sys.service.SysRoleUserService;
 import io.renren.modules.sys.service.SysUserService;
-import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,10 +39,16 @@ import java.util.Map;
  * @author Mark sunlightcs@gmail.com
  */
 @Service
-@AllArgsConstructor
 public class SysUserServiceImpl extends BaseServiceImpl<SysUserDao, SysUserEntity> implements SysUserService {
     private final SysRoleUserService sysRoleUserService;
     private final SysDeptService sysDeptService;
+    private final ShiroService shiroService;
+
+    public SysUserServiceImpl(SysRoleUserService sysRoleUserService, SysDeptService sysDeptService, ShiroService shiroService) {
+        this.sysRoleUserService = sysRoleUserService;
+        this.sysDeptService = sysDeptService;
+        this.shiroService = shiroService;
+    }
 
     @Override
     public PageData<SysUserDTO> page(Map<String, Object> params) {
@@ -112,7 +118,6 @@ public class SysUserServiceImpl extends BaseServiceImpl<SysUserDao, SysUserEntit
     public void update(SysUserDTO dto) {
         SysUserEntity entity = ConvertUtils.sourceToTarget(dto, SysUserEntity.class);
 
-        //密码加密
         if (StrUtil.isBlank(dto.getPassword())) {
             entity.setPassword(null);
         } else {
@@ -120,11 +125,11 @@ public class SysUserServiceImpl extends BaseServiceImpl<SysUserDao, SysUserEntit
             entity.setPassword(password);
         }
 
-        //更新用户
         updateById(entity);
 
-        //更新角色用户关系
         sysRoleUserService.saveOrUpdate(entity.getId(), dto.getRoleIdList());
+
+        shiroService.clearUserCache(entity.getId());
     }
 
     @Override

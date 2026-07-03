@@ -14,6 +14,8 @@ public interface DarkDetectTaskService extends CrudService<DarkDetectTaskEntity,
 
     void startSingleTask(Long id);
 
+    void stopTask(Long id);
+
     void startBatchDetect(Long batchId);
 
     DarkDetectTaskDTO getTaskDetail(Long id);

@@ -74,14 +74,14 @@ public class SensitiveRuleExecutor implements RuleExecutor {
             for (DarkSensitiveWordEntity word : sensitiveWords) {
                 if (word.getWord() == null) continue;
                 if (para.getText() != null && para.getText().contains(word.getWord())) {
+                    int logicalPageNo = document.getLogicalPageNo(para.getPageNo());
                     results.add(createResultWithPara(ruleCode, ruleName, "sensitive",
-                            para.getPageNo(), para.getIndex(), word.getWord(),
+                            logicalPageNo, para.getIndex(), word.getWord(),
                             "段落" + (para.getIndex() + 1) + "检测到敏感词"));
                     hasViolation = true;
                     break;
                 }
             }
-            if (results.size() >= 10) break;
         }
 
         if (!hasViolation) {

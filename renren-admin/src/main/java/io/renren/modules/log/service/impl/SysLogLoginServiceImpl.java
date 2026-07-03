@@ -19,6 +19,7 @@ import io.renren.modules.log.dto.SysLogLoginDTO;
 import io.renren.modules.log.entity.SysLogLoginEntity;
 import io.renren.modules.log.service.SysLogLoginService;
 import cn.hutool.core.util.StrUtil;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -65,6 +66,11 @@ public class SysLogLoginServiceImpl extends BaseServiceImpl<SysLogLoginDao, SysL
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void save(SysLogLoginEntity entity) {
+        insert(entity);
+    }
+
+    @Async
+    public void saveAsync(SysLogLoginEntity entity) {
         insert(entity);
     }
 

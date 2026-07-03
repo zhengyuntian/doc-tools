@@ -29,4 +29,6 @@ public interface SysLogLoginService extends BaseService<SysLogLoginEntity> {
     List<SysLogLoginDTO> list(Map<String, Object> params);
 
     void save(SysLogLoginEntity entity);
+
+    void saveAsync(SysLogLoginEntity entity);
 }

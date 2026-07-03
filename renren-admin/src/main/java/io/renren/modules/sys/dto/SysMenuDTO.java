@@ -106,7 +106,7 @@ public class SysMenuDTO implements TreeNode, Serializable {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public void setChildren(List<?> list) {
+	public void setChildren(List list) {
 		this.children = (List<SysMenuDTO>) list;
 	}
 

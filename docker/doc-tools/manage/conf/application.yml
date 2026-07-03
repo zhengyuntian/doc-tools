@@ -87,4 +87,7 @@ mybatis-plus:
 
 paddle:
   enabled: ${PADDLE_ENABLED:true}
-  model.path: ${PADDLE_MODEL_PATH:/Users/admin/IdeaProjects/docTools/models}
+  model.path: ${PADDLE_MODEL_PATH:/app/models}
+
+upload:
+  path: ${UPLOAD_PATH:/app/upload}

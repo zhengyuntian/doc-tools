@@ -9,6 +9,8 @@ import io.renren.modules.demo.entity.DarkSensitiveWordEntity;
 import io.renren.modules.demo.dao.DarkRuleConfigDao;
 import io.renren.modules.demo.dao.DarkRuleSchemeItemDao;
 import io.renren.modules.demo.dao.DarkSensitiveWordDao;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -19,6 +21,8 @@ import java.util.stream.Collectors;
 
 @Component
 public class DarkDetectEngine {
+    
+    private static final Logger logger = LoggerFactory.getLogger(DarkDetectEngine.class);
 
     public static final String DETECT_TYPE_SCHEME = "SCHEME";
     public static final String DETECT_TYPE_SENSITIVE = "SENSITIVE";
@@ -40,8 +44,8 @@ public class DarkDetectEngine {
 
     public DetectResult detect(Long taskId, String filePath, Integer fileType, Long schemeId, 
                                Integer schemeEnabled, Integer sensitiveEnabled) throws Exception {
-        System.out.println("[暗标检测] 开始检测，任务ID: " + taskId + ", 文件: " + filePath 
-            + ", 方案ID: " + schemeId + ", schemeEnabled: " + schemeEnabled + ", sensitiveEnabled: " + sensitiveEnabled);
+        logger.info("[暗标检测] 开始检测，任务ID: {}, 文件: {}, 方案ID: {}, schemeEnabled: {}, sensitiveEnabled: {}", 
+            taskId, filePath, schemeId, schemeEnabled, sensitiveEnabled);
 
         DetectResult detectResult = new DetectResult();
         List<DarkDetectResultEntity> allResults = new ArrayList<>();
@@ -74,13 +78,13 @@ public class DarkDetectEngine {
         detectResult.setPassRules(passRules);
         detectResult.setFailRules(failRules);
 
-        System.out.println("[暗标检测] 检测完成，总规则: " + totalRules + ", 通过: " + passRules + ", 失败: " + failRules);
+        logger.info("[暗标检测] 检测完成，总规则: {}, 通过: {}, 失败: {}", totalRules, passRules, failRules);
 
         return detectResult;
     }
 
     public DetectResult detectByScheme(Long taskId, String filePath, Integer fileType, Long schemeId) throws Exception {
-        System.out.println("[暗标检测] 开始检测，任务ID: " + taskId + ", 文件: " + filePath + ", 方案ID: " + schemeId);
+        logger.info("[暗标检测] 开始检测，任务ID: {}, 文件: {}, 方案ID: {}", taskId, filePath, schemeId);
 
         DocumentParser parser = getParser(fileType);
         if (parser == null) {
@@ -88,10 +92,10 @@ public class DarkDetectEngine {
         }
 
         ParsedDocument parsedDocument = parser.parse(filePath);
-        System.out.println("[暗标检测] 文档解析完成，段落数: " + parsedDocument.getParagraphs().size() + ", 表格数: " + parsedDocument.getTables().size());
+        logger.debug("[暗标检测] 文档解析完成，段落数: {}, 表格数: {}", parsedDocument.getParagraphs().size(), parsedDocument.getTables().size());
 
         List<DarkRuleConfigEntity> rules = loadRules(schemeId);
-        System.out.println("[暗标检测] 加载规则数量: " + rules.size());
+        logger.debug("[暗标检测] 加载规则数量: {}", rules.size());
 
         DetectResult detectResult = new DetectResult();
         List<DarkDetectResultEntity> results = new ArrayList<>();
@@ -101,22 +105,22 @@ public class DarkDetectEngine {
 
         for (int i = 0; i < rules.size(); i++) {
             DarkRuleConfigEntity rule = rules.get(i);
-            System.out.println("[暗标检测] 执行规则 " + (i + 1) + "/" + rules.size() + ": " + rule.getRuleName() 
-                + ", category: " + rule.getRuleCategory() + ", paramValue: " + rule.getParamValue());
+            logger.debug("[暗标检测] 执行规则 {}/{}: {}, category: {}, paramValue: {}", 
+                (i + 1), rules.size(), rule.getRuleName(), rule.getRuleCategory(), rule.getParamValue());
 
             RuleExecutor executor = getExecutor(rule.getRuleCategory());
             if (executor != null) {
                 try {
                     List<DarkDetectResultEntity> ruleResults = executor.execute(parsedDocument, rule);
-                    System.out.println("[暗标检测] 规则 " + rule.getRuleName() + " 执行结果数量: " + ruleResults.size());
+                    logger.debug("[暗标检测] 规则 {} 执行结果数量: {}", rule.getRuleName(), ruleResults.size());
                     
                     for (DarkDetectResultEntity r : ruleResults) {
                         r.setTaskId(taskId);
                         r.setDetectType(DETECT_TYPE_SCHEME);
                         results.add(r);
 
-                        System.out.println("[暗标检测] 规则结果: ruleName=" + r.getRuleName() 
-                            + ", isPass=" + r.getIsPass() + ", remark=" + r.getRemark());
+                        logger.debug("[暗标检测] 规则结果: ruleName={}, isPass={}, remark={}", 
+                            r.getRuleName(), r.getIsPass(), r.getRemark());
 
                         if (r.getIsPass() == 1) {
                             passCount++;
@@ -126,8 +130,7 @@ public class DarkDetectEngine {
                         }
                     }
                 } catch (Exception e) {
-                    System.out.println("[暗标检测] 规则执行异常: " + rule.getRuleName() + ", 错误: " + e.getMessage());
-                    e.printStackTrace();
+                    logger.error("[暗标检测] 规则执行异常: {}, 错误: {}", rule.getRuleName(), e.getMessage(), e);
                     DarkDetectResultEntity errorResult = new DarkDetectResultEntity();
                     errorResult.setTaskId(taskId);
                     errorResult.setRuleCode(rule.getRuleCode());
@@ -141,7 +144,7 @@ public class DarkDetectEngine {
                     violations.add(rule.getRuleName() + "：规则执行异常");
                 }
             } else {
-                System.out.println("[暗标检测] 未找到规则执行器: category=" + rule.getRuleCategory());
+                logger.warn("[暗标检测] 未找到规则执行器: category={}", rule.getRuleCategory());
             }
 
             detectResult.setCurrentRuleIndex(i + 1);
@@ -155,13 +158,13 @@ public class DarkDetectEngine {
         detectResult.setResults(results);
         detectResult.setViolations(violations);
 
-        System.out.println("[暗标检测] 检测完成，总规则: " + rules.size() + ", 通过: " + passCount + ", 失败: " + failCount);
+        logger.info("[暗标检测] 检测完成，总规则: {}, 通过: {}, 失败: {}", rules.size(), passCount, failCount);
 
         return detectResult;
     }
 
     public DetectResult detectBySensitiveWords(Long taskId, String filePath, Integer fileType) throws Exception {
-        System.out.println("[暗标检测] 开始敏感词检测，任务ID: " + taskId + ", 文件: " + filePath);
+        logger.info("[暗标检测] 开始敏感词检测，任务ID: {}, 文件: {}", taskId, filePath);
 
         DocumentParser parser = getParser(fileType);
         if (parser == null) {
@@ -169,13 +172,13 @@ public class DarkDetectEngine {
         }
 
         ParsedDocument parsedDocument = parser.parse(filePath);
-        System.out.println("[暗标检测] 文档解析完成，段落数: " + parsedDocument.getParagraphs().size());
+        logger.debug("[暗标检测] 文档解析完成，段落数: {}", parsedDocument.getParagraphs().size());
 
         List<DarkSensitiveWordEntity> sensitiveWords = darkSensitiveWordDao.selectList(
                 new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<DarkSensitiveWordEntity>()
                         .eq("enabled", 1)
         );
-        System.out.println("[暗标检测] 加载敏感词数量: " + sensitiveWords.size());
+        logger.debug("[暗标检测] 加载敏感词数量: {}", sensitiveWords.size());
 
         DetectResult detectResult = new DetectResult();
         List<DarkDetectResultEntity> results = new ArrayList<>();
@@ -263,7 +266,7 @@ public class DarkDetectEngine {
         detectResult.setPassRules(passCount);
         detectResult.setFailRules(failCount);
 
-        System.out.println("[暗标检测] 敏感词检测完成，通过: " + passCount + ", 失败: " + failCount);
+        logger.info("[暗标检测] 敏感词检测完成，通过: {}, 失败: {}", passCount, failCount);
 
         return detectResult;
     }

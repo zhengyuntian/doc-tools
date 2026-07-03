@@ -11,4 +11,5 @@ public class ParsedImage {
     private String contentType;
     private int width;
     private int height;
+    private String alignment;
 }

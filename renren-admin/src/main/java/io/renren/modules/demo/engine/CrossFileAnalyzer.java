@@ -9,6 +9,8 @@ import io.renren.modules.demo.dao.DarkDetectTaskDao;
 import io.renren.modules.demo.dao.DarkDetectCrossResultDao;
 import io.renren.modules.demo.dao.DarkSensitiveWordDao;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -17,6 +19,8 @@ import java.util.stream.Collectors;
 
 @Component
 public class CrossFileAnalyzer {
+    
+    private static final Logger logger = LoggerFactory.getLogger(CrossFileAnalyzer.class);
 
     @Autowired
     private DarkDetectTaskDao darkDetectTaskDao;
@@ -31,7 +35,7 @@ public class CrossFileAnalyzer {
     private DarkSensitiveWordDao darkSensitiveWordDao;
 
     public void analyze(Long batchId) {
-        System.out.println("[关联分析] 开始分析批次: " + batchId);
+        logger.info("[关联分析] 开始分析批次: {}", batchId);
 
         darkDetectCrossResultDao.delete(new QueryWrapper<DarkDetectCrossResultEntity>()
                 .eq("batch_id", batchId));
@@ -43,7 +47,7 @@ public class CrossFileAnalyzer {
         );
 
         if (tasks.isEmpty()) {
-            System.out.println("[关联分析] 批次没有已完成的检测任务");
+            logger.info("[关联分析] 批次没有已完成的检测任务");
             return;
         }
 
@@ -56,7 +60,7 @@ public class CrossFileAnalyzer {
             darkDetectCrossResultDao.insert(result);
         }
 
-        System.out.println("[关联分析] 分析完成，生成结果数: " + crossResults.size());
+        logger.info("[关联分析] 分析完成，生成结果数: {}", crossResults.size());
     }
 
     private List<DarkDetectCrossResultEntity> analyzeSensitiveWordCross(Long batchId, List<DarkDetectTaskEntity> tasks) {
@@ -70,7 +74,7 @@ public class CrossFileAnalyzer {
             return results;
         }
 
-        Map<String, List<String>> wordFileMap = new LinkedHashMap<>();
+        Map<String, Set<String>> wordFileMap = new LinkedHashMap<>();
 
         for (DarkDetectTaskEntity task : tasks) {
             List<DarkDetectResultEntity> taskResults = darkDetectResultDao.selectList(
@@ -83,14 +87,14 @@ public class CrossFileAnalyzer {
             for (DarkDetectResultEntity result : taskResults) {
                 String word = result.getActualValue();
                 if (word != null && !word.isEmpty()) {
-                    wordFileMap.computeIfAbsent(word, k -> new ArrayList<>()).add(task.getFileName());
+                    wordFileMap.computeIfAbsent(word, k -> new LinkedHashSet<>()).add(task.getFileName());
                 }
             }
         }
 
-        for (Map.Entry<String, List<String>> entry : wordFileMap.entrySet()) {
+        for (Map.Entry<String, Set<String>> entry : wordFileMap.entrySet()) {
             String word = entry.getKey();
-            List<String> files = entry.getValue();
+            Set<String> files = entry.getValue();
 
             if (files.size() >= 2) {
                 DarkDetectCrossResultEntity result = new DarkDetectCrossResultEntity();
@@ -128,6 +132,7 @@ public class CrossFileAnalyzer {
         List<DarkDetectCrossResultEntity> results = new ArrayList<>();
 
         Map<String, Map<String, String>> taskFormatMap = new LinkedHashMap<>();
+        Map<String, String> taskIdToFileNameMap = new LinkedHashMap<>();
 
         for (DarkDetectTaskEntity task : tasks) {
             List<DarkDetectResultEntity> taskResults = darkDetectResultDao.selectList(
@@ -142,7 +147,8 @@ public class CrossFileAnalyzer {
                     formatMap.put(result.getRuleCode(), result.getExpectedValue());
                 }
             }
-            taskFormatMap.put(task.getFileName(), formatMap);
+            taskFormatMap.put(task.getId().toString(), formatMap);
+            taskIdToFileNameMap.put(task.getId().toString(), task.getFileName());
         }
 
         if (taskFormatMap.size() < 2) {
@@ -155,13 +161,14 @@ public class CrossFileAnalyzer {
         }
 
         for (String ruleCode : allRuleCodes) {
-            Map<String, List<String>> valueFilesMap = new LinkedHashMap<>();
+            Map<String, Set<String>> valueFilesMap = new LinkedHashMap<>();
 
             for (Map.Entry<String, Map<String, String>> entry : taskFormatMap.entrySet()) {
-                String fileName = entry.getKey();
+                String taskId = entry.getKey();
+                String fileName = taskIdToFileNameMap.get(taskId);
                 String value = entry.getValue().get(ruleCode);
-                if (value != null) {
-                    valueFilesMap.computeIfAbsent(value, k -> new ArrayList<>()).add(fileName);
+                if (value != null && fileName != null) {
+                    valueFilesMap.computeIfAbsent(value, k -> new LinkedHashSet<>()).add(fileName);
                 }
             }
 
@@ -169,7 +176,7 @@ public class CrossFileAnalyzer {
                 StringBuilder actualValue = new StringBuilder();
                 StringBuilder remark = new StringBuilder("发现格式不一致：");
                 
-                for (Map.Entry<String, List<String>> valueEntry : valueFilesMap.entrySet()) {
+                for (Map.Entry<String, Set<String>> valueEntry : valueFilesMap.entrySet()) {
                     if (actualValue.length() > 0) actualValue.append("; ");
                     actualValue.append(valueEntry.getKey()).append(" (").append(valueEntry.getValue().size()).append("个文件)");
                     remark.append(valueEntry.getKey()).append("[").append(String.join(",", valueEntry.getValue())).append("]; ");
@@ -179,7 +186,7 @@ public class CrossFileAnalyzer {
                 result.setBatchId(batchId);
                 result.setAnalysisType("FORMAT_CONSISTENCY");
                 result.setAnalysisName("格式一致性检测-" + getRuleDisplayName(ruleCode));
-                result.setInvolvedFiles(String.join(",", taskFormatMap.keySet()));
+                result.setInvolvedFiles(String.join(",", taskIdToFileNameMap.values()));
                 result.setActualValue(actualValue.toString());
                 result.setExpectedValue("所有文件格式一致");
                 result.setIsPass(0);
@@ -194,7 +201,7 @@ public class CrossFileAnalyzer {
             result.setBatchId(batchId);
             result.setAnalysisType("FORMAT_CONSISTENCY");
             result.setAnalysisName("格式一致性检测");
-            result.setInvolvedFiles(String.join(",", taskFormatMap.keySet()));
+            result.setInvolvedFiles(String.join(",", taskIdToFileNameMap.values()));
             result.setActualValue("所有文件格式一致");
             result.setExpectedValue("所有文件格式一致");
             result.setIsPass(1);

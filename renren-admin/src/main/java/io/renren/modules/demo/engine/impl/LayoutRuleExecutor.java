@@ -12,6 +12,9 @@ import java.util.List;
 
 @Component
 public class LayoutRuleExecutor implements RuleExecutor {
+    
+    private int startBodyPage = 1;
+    private ParsedDocument document;
 
     @Override
     public List<DarkDetectResultEntity> execute(ParsedDocument document, DarkRuleConfigEntity rule) {
@@ -20,6 +23,9 @@ public class LayoutRuleExecutor implements RuleExecutor {
         String ruleName = rule.getRuleName();
         String paramKey = rule.getParamKey();
         String expectedValue = rule.getParamValue();
+        
+        this.document = document;
+        this.startBodyPage = document.getStartBodyPage();
 
         if (ruleCode == null || expectedValue == null) {
             return results;
@@ -34,6 +40,18 @@ public class LayoutRuleExecutor implements RuleExecutor {
                 break;
             case "PAGE_MARGIN":
                 checkPageMargin(document, rule, results, paramKey);
+                break;
+            case "HEADER_FOOTER":
+                checkHeaderFooter(document, rule, results, paramKey);
+                break;
+            case "CONTENT_CHECK":
+                checkContent(document, rule, results, paramKey);
+                break;
+            case "COVER_CHECK":
+                checkCover(document, rule, results);
+                break;
+            case "PAGE_NUMBER_CHECK":
+                checkPageNumber(document, rule, results);
                 break;
             case "PARAGRAPH_ALIGN":
                 checkParagraphAlign(document, rule, results);
@@ -58,6 +76,9 @@ public class LayoutRuleExecutor implements RuleExecutor {
                 break;
             case "SPACE_CHECK":
                 checkSpace(document, rule, results);
+                break;
+            case "FIGURE_ALIGN":
+                checkFigureAlign(document, rule, results);
                 break;
             default:
                 break;
@@ -138,27 +159,44 @@ public class LayoutRuleExecutor implements RuleExecutor {
     private void checkParagraphAlign(ParsedDocument document, DarkRuleConfigEntity rule, List<DarkDetectResultEntity> results) {
         String expected = rule.getParamValue();
         for (int i = 0; i < document.getParagraphs().size(); i++) {
-            String actual = document.getParagraphs().get(i).getAlignment();
+            var para = document.getParagraphs().get(i);
+            if (para.getPageNo() < startBodyPage) continue;
+            
+            String actual = para.getAlignment();
+            String previewText = para.getText().length() > 20 ? para.getText().substring(0, 20) + "..." : para.getText();
             if (actual == null) actual = "left";
             if (!actual.equalsIgnoreCase(expected)) {
                 results.add(createResult(rule.getRuleCode(), rule.getRuleName(), "layout", 
-                        document.getParagraphs().get(i).getPageNo(), i,
-                        actual, expected, "段落" + (i + 1) + "对齐方式不符合要求"));
-                if (results.size() >= 10) break;
+                        para.getPageNo(), i,
+                        alignmentToChinese(actual), alignmentToChinese(expected), 
+                        "段落" + (i + 1) + "对齐方式不符合要求，内容：" + previewText));
             }
         }
+    }
+    
+    private String alignmentToChinese(String alignment) {
+        if (alignment == null) return "左对齐";
+        return switch (alignment.toLowerCase()) {
+            case "left" -> "左对齐";
+            case "center" -> "居中";
+            case "right" -> "右对齐";
+            default -> alignment;
+        };
     }
 
     private void checkLineSpacing(ParsedDocument document, DarkRuleConfigEntity rule, List<DarkDetectResultEntity> results) {
         double expected = Double.parseDouble(rule.getParamValue());
         for (int i = 0; i < document.getParagraphs().size(); i++) {
-            Double actual = document.getParagraphs().get(i).getLineSpacingValue();
+            var para = document.getParagraphs().get(i);
+            if (para.getPageNo() < startBodyPage) continue;
+            
+            Double actual = para.getLineSpacingValue();
+            String previewText = para.getText().length() > 20 ? para.getText().substring(0, 20) + "..." : para.getText();
             if (actual != null && actual > 0 && Math.abs(actual - expected) > 1) {
                 results.add(createResult(rule.getRuleCode(), rule.getRuleName(), "layout",
-                        document.getParagraphs().get(i).getPageNo(), i,
+                        para.getPageNo(), i,
                         String.valueOf(actual), rule.getParamValue(),
-                        "段落" + (i + 1) + "行间距不符合要求"));
-                if (results.size() >= 10) break;
+                        "段落" + (i + 1) + "行间距不符合要求，内容：" + previewText));
             }
         }
     }
@@ -166,7 +204,10 @@ public class LayoutRuleExecutor implements RuleExecutor {
     private void checkFirstLineIndent(ParsedDocument document, DarkRuleConfigEntity rule, List<DarkDetectResultEntity> results) {
         int expectedChars = Integer.parseInt(rule.getParamValue());
         for (int i = 0; i < document.getParagraphs().size(); i++) {
-            String text = document.getParagraphs().get(i).getText();
+            var para = document.getParagraphs().get(i);
+            if (para.getPageNo() < startBodyPage) continue;
+            
+            String text = para.getText();
             if (text != null && !text.isEmpty()) {
                 int leadingSpaces = 0;
                 while (leadingSpaces < text.length() && text.charAt(leadingSpaces) == ' ') {
@@ -174,10 +215,9 @@ public class LayoutRuleExecutor implements RuleExecutor {
                 }
                 if (leadingSpaces != expectedChars * 2) {
                     results.add(createResult(rule.getRuleCode(), rule.getRuleName(), "layout",
-                            document.getParagraphs().get(i).getPageNo(), i,
+                            para.getPageNo(), i,
                             String.valueOf(leadingSpaces / 2), rule.getParamValue(),
-                            "段落" + (i + 1) + "首行缩进不符合要求"));
-                    if (results.size() >= 10) break;
+                            "段落" + (i + 1) + "首行缩进不符合要求，内容：" + (text.length() > 20 ? text.substring(0, 20) + "..." : text)));
                 }
             }
         }
@@ -187,17 +227,19 @@ public class LayoutRuleExecutor implements RuleExecutor {
                                       List<DarkDetectResultEntity> results, String paramKey) {
         double expected = Double.parseDouble(rule.getParamValue());
         for (int i = 0; i < document.getParagraphs().size(); i++) {
+            var para = document.getParagraphs().get(i);
+            if (para.getPageNo() < startBodyPage) continue;
+            
             Double actualDouble = "space_before".equals(paramKey) ? 
-                    document.getParagraphs().get(i).getSpaceBefore() : 
-                    document.getParagraphs().get(i).getSpaceAfter();
+                    para.getSpaceBefore() : 
+                    para.getSpaceAfter();
             if (actualDouble == null) continue;
             double actual = actualDouble.doubleValue();
             if (Math.abs(actual - expected) > 1) {
                 results.add(createResult(rule.getRuleCode(), rule.getRuleName(), "layout",
-                        document.getParagraphs().get(i).getPageNo(), i,
+                        para.getPageNo(), i,
                         String.valueOf(actual), rule.getParamValue(),
                         "段落" + (i + 1) + ("space_before".equals(paramKey) ? "段前" : "段后") + "间距不符合要求"));
-                if (results.size() >= 10) break;
             }
         }
     }
@@ -206,22 +248,25 @@ public class LayoutRuleExecutor implements RuleExecutor {
         String[] forbiddenStyles = rule.getParamValue().split(",");
         for (int i = 0; i < document.getParagraphs().size(); i++) {
             var para = document.getParagraphs().get(i);
+            if (para.getPageNo() < startBodyPage) continue;
+            
+            String paraText = para.getText();
+            String previewText = paraText.length() > 20 ? paraText.substring(0, 20) + "..." : paraText;
             for (String style : forbiddenStyles) {
                 if ("bold".equals(style) && Boolean.TRUE.equals(para.getBold())) {
                     results.add(createResult(rule.getRuleCode(), rule.getRuleName(), "layout",
-                            para.getPageNo(), i, "bold", "not_bold",
-                            "段落" + (i + 1) + "包含禁止的加粗格式"));
+                            para.getPageNo(), i, "加粗", "不加粗",
+                            "段落" + (i + 1) + "包含禁止的加粗格式，内容：" + previewText));
                 } else if ("underline".equals(style) && Boolean.TRUE.equals(para.getUnderline())) {
                     results.add(createResult(rule.getRuleCode(), rule.getRuleName(), "layout",
-                            para.getPageNo(), i, "underline", "no_underline",
-                            "段落" + (i + 1) + "包含禁止的下划线格式"));
+                            para.getPageNo(), i, "下划线", "无下划线",
+                            "段落" + (i + 1) + "包含禁止的下划线格式，内容：" + previewText));
                 } else if ("italic".equals(style) && Boolean.TRUE.equals(para.getItalic())) {
                     results.add(createResult(rule.getRuleCode(), rule.getRuleName(), "layout",
-                            para.getPageNo(), i, "italic", "no_italic",
-                            "段落" + (i + 1) + "包含禁止的斜体格式"));
+                            para.getPageNo(), i, "斜体", "无斜体",
+                            "段落" + (i + 1) + "包含禁止的斜体格式，内容：" + previewText));
                 }
             }
-            if (results.size() >= 10) break;
         }
     }
 
@@ -229,12 +274,14 @@ public class LayoutRuleExecutor implements RuleExecutor {
         boolean noShading = Boolean.parseBoolean(rule.getParamValue());
         if (noShading) {
             for (int i = 0; i < document.getParagraphs().size(); i++) {
-                if (Boolean.TRUE.equals(document.getParagraphs().get(i).getShading())) {
+                var para = document.getParagraphs().get(i);
+                if (para.getPageNo() < startBodyPage) continue;
+                
+                if (Boolean.TRUE.equals(para.getShading())) {
                     results.add(createResult(rule.getRuleCode(), rule.getRuleName(), "layout",
-                            document.getParagraphs().get(i).getPageNo(), i,
-                            "shading", "no_shading",
+                            para.getPageNo(), i,
+                            "有底纹", "无底纹",
                             "段落" + (i + 1) + "包含底纹"));
-                    if (results.size() >= 10) break;
                 }
             }
         }
@@ -245,13 +292,15 @@ public class LayoutRuleExecutor implements RuleExecutor {
         if ("direction".equals(paramKey)) {
             String expected = rule.getParamValue();
             for (int i = 0; i < document.getParagraphs().size(); i++) {
-                String actual = document.getParagraphs().get(i).getDirection();
+                var para = document.getParagraphs().get(i);
+                if (para.getPageNo() < startBodyPage) continue;
+                
+                String actual = para.getDirection();
                 if (actual == null) actual = "left_to_right";
                 if (!actual.equalsIgnoreCase(expected)) {
                     results.add(createResult(rule.getRuleCode(), rule.getRuleName(), "layout",
-                            document.getParagraphs().get(i).getPageNo(), i,
+                            para.getPageNo(), i,
                             actual, expected, "段落" + (i + 1) + "输入方向不符合要求"));
-                    if (results.size() >= 10) break;
                 }
             }
         }
@@ -261,13 +310,121 @@ public class LayoutRuleExecutor implements RuleExecutor {
         boolean checkSpaces = Boolean.parseBoolean(rule.getParamValue());
         if (checkSpaces) {
             for (int i = 0; i < document.getParagraphs().size(); i++) {
-                String text = document.getParagraphs().get(i).getText();
+                var para = document.getParagraphs().get(i);
+                if (para.getPageNo() < startBodyPage) continue;
+                
+                String text = para.getText();
                 if (text != null && text.contains("  ")) {
                     results.add(createResult(rule.getRuleCode(), rule.getRuleName(), "layout",
-                            document.getParagraphs().get(i).getPageNo(), i,
-                            "multiple_spaces", "single_space",
+                            para.getPageNo(), i,
+                            "多个空格", "单个空格",
                             "段落" + (i + 1) + "包含连续空格"));
-                    if (results.size() >= 10) break;
+                }
+            }
+        }
+    }
+
+    private void checkHeaderFooter(ParsedDocument document, DarkRuleConfigEntity rule, 
+                                    List<DarkDetectResultEntity> results, String paramKey) {
+        boolean checkEnabled = Boolean.parseBoolean(rule.getParamValue());
+        if (!checkEnabled) return;
+
+        ParsedPageSetup pageSetup = document.getPageSetup();
+        if (pageSetup == null) return;
+
+        if ("check_header".equals(paramKey)) {
+            if (Boolean.TRUE.equals(pageSetup.getHasHeader())) {
+                results.add(createResult(rule.getRuleCode(), rule.getRuleName(), "layout",
+                        1, 0, "has_header", "no_header", "文档包含页眉"));
+            }
+        } else if ("check_footer".equals(paramKey)) {
+            if (Boolean.TRUE.equals(pageSetup.getHasFooter())) {
+                results.add(createResult(rule.getRuleCode(), rule.getRuleName(), "layout",
+                        1, 0, "has_footer", "no_footer", "文档包含页脚"));
+            }
+        }
+    }
+
+    private void checkContent(ParsedDocument document, DarkRuleConfigEntity rule, 
+                              List<DarkDetectResultEntity> results, String paramKey) {
+        boolean checkEnabled = Boolean.parseBoolean(rule.getParamValue());
+        if (!checkEnabled) return;
+
+        String fullText = document.getFullText();
+        if (fullText == null) return;
+
+        if ("check_table_of_contents".equals(paramKey)) {
+            if (fullText.contains("目录") || fullText.contains("Contents") || fullText.contains("TABLE OF CONTENTS")) {
+                results.add(createResult(rule.getRuleCode(), rule.getRuleName(), "layout",
+                        1, 0, "包含目录", "无目录", "文档包含目录"));
+            }
+        }
+    }
+
+    private void checkCover(ParsedDocument document, DarkRuleConfigEntity rule, List<DarkDetectResultEntity> results) {
+        boolean checkEnabled = Boolean.parseBoolean(rule.getParamValue());
+        if (!checkEnabled) return;
+
+        String fullText = document.getFullText();
+        if (fullText == null) return;
+
+        if (fullText.contains("封面") || fullText.contains("COVER")) {
+            results.add(createResult(rule.getRuleCode(), rule.getRuleName(), "layout",
+                    1, 0, "has_cover", "no_cover", "文档包含封面"));
+        }
+    }
+
+    private void checkPageNumber(ParsedDocument document, DarkRuleConfigEntity rule, List<DarkDetectResultEntity> results) {
+        boolean checkEnabled = Boolean.parseBoolean(rule.getParamValue());
+        if (!checkEnabled) return;
+
+        String fullText = document.getFullText();
+        if (fullText == null) return;
+
+        if (fullText.contains("页码") || fullText.contains("Page") || fullText.contains("PAGE")) {
+            results.add(createResult(rule.getRuleCode(), rule.getRuleName(), "layout",
+                    1, 0, "has_page_number", "no_page_number", "文档包含页码"));
+        }
+    }
+
+    private void checkFigureAlign(ParsedDocument document, DarkRuleConfigEntity rule, List<DarkDetectResultEntity> results) {
+        String expected = rule.getParamValue();
+        java.util.Set<String> processedKeys = new java.util.HashSet<>();
+
+        if (document.getTables() != null) {
+            for (int i = 0; i < document.getTables().size(); i++) {
+                var table = document.getTables().get(i);
+                if (table.getPageNo() > 0 && table.getPageNo() < startBodyPage) continue;
+                
+                String resultKey = rule.getRuleCode() + "_table_" + table.getPageNo() + "_" + i;
+                if (processedKeys.contains(resultKey)) continue;
+                
+                String actual = table.getAlignment();
+                if (actual == null) actual = "left";
+                if (!actual.equalsIgnoreCase(expected)) {
+                    results.add(createResult(rule.getRuleCode(), rule.getRuleName(), "layout",
+                            table.getPageNo() > 0 ? table.getPageNo() : 1, i, 
+                            alignmentToChinese(actual), alignmentToChinese(expected), "表格" + (i + 1) + "整体对齐方式不符合要求"));
+                    processedKeys.add(resultKey);
+                }
+            }
+        }
+
+        if (document.getImages() != null) {
+            for (int i = 0; i < document.getImages().size(); i++) {
+                var image = document.getImages().get(i);
+                if (image.getPageNo() > 0 && image.getPageNo() < startBodyPage) continue;
+                
+                String resultKey = rule.getRuleCode() + "_image_" + image.getPageNo() + "_" + i;
+                if (processedKeys.contains(resultKey)) continue;
+                
+                String actual = image.getAlignment();
+                if (actual == null) actual = "left";
+                if (!actual.equalsIgnoreCase(expected)) {
+                    results.add(createResult(rule.getRuleCode(), rule.getRuleName(), "layout",
+                            image.getPageNo() > 0 ? image.getPageNo() : 1, i,
+                            alignmentToChinese(actual), alignmentToChinese(expected), "图片" + (i + 1) + "整体对齐方式不符合要求"));
+                    processedKeys.add(resultKey);
                 }
             }
         }
@@ -282,7 +439,8 @@ public class LayoutRuleExecutor implements RuleExecutor {
         result.setRuleCategory(category);
         result.setIsPass(0);
         result.setSeverity(1);
-        result.setPageNo(pageNo);
+        int logicalPageNo = document.getLogicalPageNo(pageNo);
+        result.setPageNo(logicalPageNo);
         result.setParagraphIndex(index);
         result.setActualValue(actualValue);
         result.setExpectedValue(expectedValue);

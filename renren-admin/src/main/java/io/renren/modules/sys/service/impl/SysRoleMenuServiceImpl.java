@@ -10,7 +10,9 @@ package io.renren.modules.sys.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
 import io.renren.common.service.impl.BaseServiceImpl;
+import io.renren.modules.security.service.ShiroService;
 import io.renren.modules.sys.dao.SysRoleMenuDao;
+import io.renren.modules.sys.dao.SysRoleUserDao;
 import io.renren.modules.sys.entity.SysRoleMenuEntity;
 import io.renren.modules.sys.service.SysRoleMenuService;
 import org.springframework.stereotype.Service;
@@ -27,26 +29,32 @@ import java.util.List;
 @Service
 public class SysRoleMenuServiceImpl extends BaseServiceImpl<SysRoleMenuDao, SysRoleMenuEntity> implements SysRoleMenuService {
 
+	private final SysRoleUserDao sysRoleUserDao;
+	private final ShiroService shiroService;
+
+	public SysRoleMenuServiceImpl(SysRoleUserDao sysRoleUserDao, ShiroService shiroService) {
+		this.sysRoleUserDao = sysRoleUserDao;
+		this.shiroService = shiroService;
+	}
+
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public void saveOrUpdate(Long roleId, List<Long> menuIdList) {
-		//先删除角色菜单关系
 		deleteByRoleIds(new Long[]{roleId});
 
-		//角色没有一个菜单权限的情况
 		if(CollUtil.isEmpty(menuIdList)){
+			clearRoleUserPermissionsCache(roleId);
 			return ;
 		}
 
-		//保存角色菜单关系
 		for(Long menuId : menuIdList){
 			SysRoleMenuEntity sysRoleMenuEntity = new SysRoleMenuEntity();
 			sysRoleMenuEntity.setMenuId(menuId);
 			sysRoleMenuEntity.setRoleId(roleId);
-
-			//保存
 			insert(sysRoleMenuEntity);
 		}
+
+		clearRoleUserPermissionsCache(roleId);
 	}
 
 	@Override
@@ -58,12 +66,22 @@ public class SysRoleMenuServiceImpl extends BaseServiceImpl<SysRoleMenuDao, SysR
 	@Transactional(rollbackFor = Exception.class)
 	public void deleteByRoleIds(Long[] roleIds) {
 		baseDao.deleteByRoleIds(roleIds);
+		for (Long roleId : roleIds) {
+			clearRoleUserPermissionsCache(roleId);
+		}
 	}
 
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public void deleteByMenuId(Long menuId) {
 		baseDao.deleteByMenuId(menuId);
+	}
+
+	private void clearRoleUserPermissionsCache(Long roleId) {
+		List<Long> userIdList = sysRoleUserDao.getUserIdListByRoleId(roleId);
+		for (Long userId : userIdList) {
+			shiroService.clearUserCache(userId);
+		}
 	}
 
 }

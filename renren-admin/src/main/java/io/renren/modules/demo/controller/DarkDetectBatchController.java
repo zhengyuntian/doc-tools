@@ -10,6 +10,7 @@ import io.renren.common.validator.group.AddGroup;
 import io.renren.common.validator.group.DefaultGroup;
 import io.renren.common.validator.group.UpdateGroup;
 import io.renren.modules.demo.dao.DarkDetectTaskDao;
+import io.renren.modules.demo.config.UploadConfig;
 import io.renren.modules.demo.dto.DarkDetectBatchDTO;
 import io.renren.modules.demo.dto.DarkDetectTaskDTO;
 import io.renren.modules.demo.entity.DarkDetectBatchEntity;
@@ -38,6 +39,8 @@ public class DarkDetectBatchController {
     private DarkDetectBatchService darkDetectBatchService;
     @Autowired
     private DarkDetectTaskService darkDetectTaskService;
+    @Autowired
+    private UploadConfig uploadConfig;
 
     @GetMapping("page")
     @Operation(summary = "分页")
@@ -113,7 +116,7 @@ public class DarkDetectBatchController {
             return new Result().error("批次不存在");
         }
 
-        String uploadDir = "/tmp/dark_upload/" + id + "/";
+        String uploadDir = uploadConfig.getPath() + "/" + id + "/";
         File dir = new File(uploadDir);
         if (!dir.exists()) {
             dir.mkdirs();

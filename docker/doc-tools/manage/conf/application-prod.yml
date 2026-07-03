@@ -1,10 +1,10 @@
 spring:
   datasource:
     druid:
-      driver-class-name: com.mysql.cj.jdbc.Driver
-      url: jdbc:mysql://localhost:3306/renren_security?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true
-      username: renren
-      password: 123456
+      driver-class-name: ${SPRING_DATASOURCE_DRUID_DRIVER_CLASS_NAME:com.mysql.cj.jdbc.Driver}
+      url: ${SPRING_DATASOURCE_DRUID_URL:jdbc:mysql://localhost:3306/renren_security?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true}
+      username: ${SPRING_DATASOURCE_DRUID_USERNAME:renren}
+      password: ${SPRING_DATASOURCE_DRUID_PASSWORD:123456}
       initial-size: 10
       max-active: 100
       min-idle: 10
@@ -31,3 +31,6 @@ spring:
 paddle:
   enabled: ${PADDLE_ENABLED:true}
   model.path: ${PADDLE_MODEL_PATH:/app/models}
+
+upload:
+  path: ${UPLOAD_PATH:/app/upload}

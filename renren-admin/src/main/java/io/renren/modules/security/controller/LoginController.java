@@ -93,7 +93,7 @@ public class LoginController {
         if (user == null) {
             log.setStatus(LoginStatusEnum.FAIL.value());
             log.setCreatorName(login.getUsername());
-            sysLogLoginService.save(log);
+            sysLogLoginService.saveAsync(log);
 
             throw new RenException(ErrorCode.ACCOUNT_PASSWORD_ERROR);
         }
@@ -103,7 +103,7 @@ public class LoginController {
             log.setStatus(LoginStatusEnum.FAIL.value());
             log.setCreator(user.getId());
             log.setCreatorName(user.getUsername());
-            sysLogLoginService.save(log);
+            sysLogLoginService.saveAsync(log);
 
             throw new RenException(ErrorCode.ACCOUNT_PASSWORD_ERROR);
         }
@@ -113,7 +113,7 @@ public class LoginController {
             log.setStatus(LoginStatusEnum.LOCK.value());
             log.setCreator(user.getId());
             log.setCreatorName(user.getUsername());
-            sysLogLoginService.save(log);
+            sysLogLoginService.saveAsync(log);
 
             throw new RenException(ErrorCode.ACCOUNT_DISABLE);
         }
@@ -122,7 +122,7 @@ public class LoginController {
         log.setStatus(LoginStatusEnum.SUCCESS.value());
         log.setCreator(user.getId());
         log.setCreatorName(user.getUsername());
-        sysLogLoginService.save(log);
+        sysLogLoginService.saveAsync(log);
 
         return sysUserTokenService.createToken(user.getId());
     }
@@ -145,7 +145,7 @@ public class LoginController {
         log.setCreator(user.getId());
         log.setCreatorName(user.getUsername());
         log.setCreateDate(new Date());
-        sysLogLoginService.save(log);
+        sysLogLoginService.saveAsync(log);
 
         return new Result();
     }

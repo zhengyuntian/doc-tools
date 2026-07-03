@@ -21,4 +21,8 @@
         select role_id from sys_role_user where user_id = #{value}
     </select>
 
+    <select id="getUserIdListByRoleId" resultType="long">
+        select user_id from sys_role_user where role_id = #{value}
+    </select>
+
 </mapper>

@@ -20,4 +20,7 @@ public class ParsedTable {
     private Boolean italic;
     private Boolean underline;
     private Boolean strikethrough;
+    private String verticalAlign;
+    private String horizontalAlign;
+    private String alignment;
 }

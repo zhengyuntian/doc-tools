@@ -17,6 +17,8 @@ import io.renren.modules.demo.service.DarkDetectTaskService;
 import io.renren.modules.security.user.SecurityUser;
 import io.renren.modules.security.user.UserDetail;
 import cn.hutool.core.util.StrUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -27,6 +29,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class DarkDetectTaskServiceImpl extends CrudServiceImpl<DarkDetectTaskDao, DarkDetectTaskEntity, DarkDetectTaskDTO> implements DarkDetectTaskService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(DarkDetectTaskServiceImpl.class);
     
     @Autowired
     private DarkDetectBatchDao darkDetectBatchDao;
@@ -137,7 +141,7 @@ public class DarkDetectTaskServiceImpl extends CrudServiceImpl<DarkDetectTaskDao
         DarkDetectTaskEntity entity = baseDao.selectById(id);
         if (entity != null && entity.getStatus() == 0) {
             darkDetectResultDao.deleteByTaskId(entity.getId());
-            
+
             entity.setStatus(1);
             entity.setTotalRules(0);
             entity.setPassRules(0);
@@ -147,10 +151,27 @@ public class DarkDetectTaskServiceImpl extends CrudServiceImpl<DarkDetectTaskDao
             entity.setCurrentRuleIndex(null);
             entity.setUpdateTime(new Date());
             updateById(entity);
-            
-            System.out.println("[暗标检测] 启动单任务检测，任务ID: " + id + ", 文件: " + entity.getFileName());
-            
+
+            logger.info("[暗标检测] 启动单任务检测，任务ID: {}, 文件: {}", id, entity.getFileName());
+
             detectSingleTask(entity.getId(), entity.getBatchId());
+        }
+    }
+
+    @Override
+    public void stopTask(Long id) {
+        DarkDetectTaskEntity entity = baseDao.selectById(id);
+        if (entity != null) {
+            logger.info("[暗标检测] 停止任务，任务ID: {}, 文件: {}, 原状态: {}", id, entity.getFileName(), entity.getStatus());
+
+            entity.setStatus(0);
+            entity.setUpdateTime(new Date());
+            updateById(entity);
+
+            logger.info("[暗标检测] 任务已停止，任务ID: {}", id);
+
+            // 更新批次状态
+            updateBatchStatus(entity.getBatchId());
         }
     }
 
@@ -184,7 +205,7 @@ public class DarkDetectTaskServiceImpl extends CrudServiceImpl<DarkDetectTaskDao
             updateById(task);
         }
 
-        System.out.println("[暗标检测] 启动批次检测，批次ID: " + batchId + ", 任务数量: " + allTasks.size());
+        logger.info("[暗标检测] 启动批次检测，批次ID: {}, 任务数量: {}", batchId, allTasks.size());
 
         processBatchDetection(batchId);
     }
@@ -205,7 +226,7 @@ public class DarkDetectTaskServiceImpl extends CrudServiceImpl<DarkDetectTaskDao
 
                 updateBatchStatus(batchId);
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.error("[暗标检测] 批次检测异常，批次ID: {}", batchId, e);
                 QueryWrapper<DarkDetectTaskEntity> failWrapper = new QueryWrapper<>();
                 failWrapper.eq("batch_id", batchId);
                 failWrapper.eq("status", 1);
@@ -225,14 +246,14 @@ public class DarkDetectTaskServiceImpl extends CrudServiceImpl<DarkDetectTaskDao
             try {
                 DarkDetectTaskEntity task = baseDao.selectById(taskId);
                 if (task == null || task.getStatus() != 1) {
-                    System.out.println("[暗标检测] 任务不存在或状态不正确，跳过检测");
+                    logger.info("[暗标检测] 任务不存在或状态不正确，跳过检测");
                     return;
                 }
 
                 executeRealDetection(task);
                 updateBatchStatus(batchId);
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.error("[暗标检测] 单任务检测异常，任务ID: {}", taskId, e);
                 DarkDetectTaskEntity task = baseDao.selectById(taskId);
                 if (task != null) {
                     task.setStatus(3);
@@ -271,7 +292,8 @@ public class DarkDetectTaskServiceImpl extends CrudServiceImpl<DarkDetectTaskDao
             StringBuilder violations = new StringBuilder("[");
             for (int i = 0; i < result.getViolations().size(); i++) {
                 if (i > 0) violations.append(",");
-                violations.append("\"").append(result.getViolations().get(i)).append("\"");
+                String violation = cleanString(result.getViolations().get(i));
+                violations.append("\"").append(violation).append("\"");
             }
             violations.append("]");
 
@@ -284,9 +306,10 @@ public class DarkDetectTaskServiceImpl extends CrudServiceImpl<DarkDetectTaskDao
             task.setUpdateTime(new Date());
             updateById(task);
 
-            System.out.println("[暗标检测] 任务ID: " + task.getId() + ", 文件: " + task.getFileName() + ", 检测完成, 通过: " + result.getPassRules() + "/" + result.getTotalRules());
+            logger.info("[暗标检测] 任务ID: {}, 文件: {}, 检测完成, 通过: {}/{}", 
+                task.getId(), task.getFileName(), result.getPassRules(), result.getTotalRules());
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("[暗标检测] 任务检测异常，任务ID: {}, 文件: {}", task.getId(), task.getFileName(), e);
             task.setStatus(3);
             task.setErrorMsg("检测异常：" + e.getMessage());
             task.setUpdateTime(new Date());
@@ -347,5 +370,25 @@ public class DarkDetectTaskServiceImpl extends CrudServiceImpl<DarkDetectTaskDao
     @Override
     public DarkDetectTaskDTO getTaskDetail(Long id) {
         return get(id);
+    }
+    
+    private String cleanString(String str) {
+        if (str == null) return "";
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < str.length(); i++) {
+            char c = str.charAt(i);
+            if (c >= 0x20 && c <= 0x7E || 
+                c >= 0x4E00 && c <= 0x9FFF || 
+                c >= 0x3040 && c <= 0x30FF || 
+                c >= 0xAC00 && c <= 0xD7AF || 
+                c == '\n' || c == '\r' || c == '\t') {
+                sb.append(c);
+            }
+        }
+        String result = sb.toString();
+        if (result.length() > 500) {
+            result = result.substring(0, 500) + "...";
+        }
+        return result;
     }
 }

@@ -42,4 +42,11 @@ public interface SysRoleUserDao extends BaseDao<SysRoleUserEntity> {
      * @return
      */
     List<Long> getRoleIdList(Long userId);
+
+    /**
+     * 根据角色ID获取用户ID列表
+     * @param roleId 角色ID
+     * @return 用户ID列表
+     */
+    List<Long> getUserIdListByRoleId(Long roleId);
 }

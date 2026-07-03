@@ -40,4 +40,16 @@ public interface ShiroService {
      * @return        返回部门ID列表
      */
     List<Long> getDataScopeList(Long userId);
+
+    /**
+     * 清除用户缓存（用户信息和权限）
+     * @param userId 用户ID
+     */
+    void clearUserCache(Long userId);
+
+    /**
+     * 清除Token缓存
+     * @param token token值
+     */
+    void clearTokenCache(String token);
 }

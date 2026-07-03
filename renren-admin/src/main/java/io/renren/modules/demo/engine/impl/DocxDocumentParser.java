@@ -154,6 +154,17 @@ public class DocxDocumentParser implements DocumentParser {
             parsedTable.setRowCount(table.getNumberOfRows());
 
             boolean hasBorder = false;
+            String tableFontFamily = null;
+            Double tableFontSize = null;
+            String tableColor = "black";
+            Boolean tableBold = false;
+            Boolean tableItalic = false;
+            Boolean tableUnderline = false;
+            Boolean tableStrikethrough = false;
+            String tableVerticalAlign = null;
+            String tableHorizontalAlign = null;
+            String tableAlignment = null;
+            boolean hasFontInfo = false;
 
             for (XWPFTableRow row : table.getRows()) {
                 if (parsedTable.getColCount() == 0) {
@@ -167,17 +178,76 @@ public class DocxDocumentParser implements DocumentParser {
                         hasBorder = cell.getCTTc().getTcPr() != null &&
                                 cell.getCTTc().getTcPr().isSetTcBorders();
                     }
+                    
+                    // 解析表格字体信息（从第一个非空单元格获取）
+                    if (!hasFontInfo && !cell.getText().isEmpty()) {
+                        List<XWPFParagraph> cellParagraphs = cell.getParagraphs();
+                        if (!cellParagraphs.isEmpty()) {
+                            List<XWPFRun> runs = cellParagraphs.get(0).getRuns();
+                            if (!runs.isEmpty()) {
+                                XWPFRun run = runs.get(0);
+                                tableFontFamily = run.getFontFamily();
+                                if (run.getFontSizeAsDouble() != null) {
+                                    tableFontSize = run.getFontSizeAsDouble() / 2;
+                                }
+                                tableColor = run.getColor();
+                                if (tableColor == null) tableColor = "black";
+                                tableBold = Boolean.TRUE.equals(run.isBold());
+                                tableItalic = Boolean.TRUE.equals(run.isItalic());
+                                tableUnderline = Boolean.TRUE.equals(run.getUnderline() != null);
+                                tableStrikethrough = Boolean.TRUE.equals(run.isStrikeThrough());
+                                hasFontInfo = true;
+                            }
+                        }
+                    }
+                    
+                    // 解析表格对齐信息（从第一个非空单元格获取）
+                    if (tableVerticalAlign == null) {
+                        if (cell.getVerticalAlignment() != null) {
+                            tableVerticalAlign = cell.getVerticalAlignment().name().toLowerCase();
+                        } else {
+                            tableVerticalAlign = "center";
+                        }
+                    }
+                    if (tableHorizontalAlign == null) {
+                        List<XWPFParagraph> cellParagraphs = cell.getParagraphs();
+                        if (!cellParagraphs.isEmpty()) {
+                            XWPFParagraph para = cellParagraphs.get(0);
+                            if (para.getAlignment() != null) {
+                                tableHorizontalAlign = para.getAlignment().name().toLowerCase();
+                            } else {
+                                tableHorizontalAlign = "left";
+                            }
+                        }
+                    }
                 }
                 parsedTable.getCells().add(cellTexts);
             }
 
             parsedTable.setHasBorder(hasBorder);
+            parsedTable.setFontFamily(tableFontFamily);
+            parsedTable.setFontSize(tableFontSize);
+            parsedTable.setColor(tableColor);
+            parsedTable.setBold(tableBold);
+            parsedTable.setItalic(tableItalic);
+            parsedTable.setUnderline(tableUnderline);
+            parsedTable.setStrikethrough(tableStrikethrough);
+            if (table.getCTTbl().getTblPr() != null && table.getCTTbl().getTblPr().isSetJc()) {
+                tableAlignment = table.getCTTbl().getTblPr().getJc().getVal().toString();
+            } else {
+                tableAlignment = "center";
+            }
+            
+            parsedTable.setVerticalAlign(tableVerticalAlign);
+            parsedTable.setHorizontalAlign(tableHorizontalAlign);
+            parsedTable.setAlignment(tableAlignment);
             parsedDoc.getTables().add(parsedTable);
         }
     }
 
     private void parseImages(XWPFDocument document, ParsedDocument parsedDoc) {
         List<XWPFPictureData> pictures = document.getAllPictures();
+        List<XWPFParagraph> paragraphs = document.getParagraphs();
 
         for (int i = 0; i < pictures.size(); i++) {
             XWPFPictureData picture = pictures.get(i);
@@ -187,8 +257,27 @@ public class DocxDocumentParser implements DocumentParser {
             parsedImage.setContent(picture.getData());
             parsedImage.setContentType(picture.getPackagePart().getContentType());
 
+            String alignment = findImageAlignment(picture, paragraphs);
+            parsedImage.setAlignment(alignment);
+
             parsedDoc.getImages().add(parsedImage);
         }
+    }
+
+    private String findImageAlignment(XWPFPictureData picture, List<XWPFParagraph> paragraphs) {
+        for (XWPFParagraph paragraph : paragraphs) {
+            for (XWPFRun run : paragraph.getRuns()) {
+                for (XWPFPicture pic : run.getEmbeddedPictures()) {
+                    if (pic.getPictureData().equals(picture)) {
+                        if (paragraph.getAlignment() != null) {
+                            return paragraph.getAlignment().name().toLowerCase();
+                        }
+                        return "left";
+                    }
+                }
+            }
+        }
+        return "left";
     }
 
     private void buildFullText(ParsedDocument parsedDoc) {

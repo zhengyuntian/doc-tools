@@ -13,8 +13,9 @@ import io.renren.modules.security.oauth2.Oauth2Realm;
 import org.apache.shiro.mgt.SecurityManager;
 import org.apache.shiro.session.mgt.SessionManager;
 import org.apache.shiro.spring.LifecycleBeanPostProcessor;
-import org.apache.shiro.spring.security.interceptor.AuthorizationAttributeSourceAdvisor;
 import org.apache.shiro.spring.web.ShiroFilterFactoryBean;
+import org.apache.shiro.spring.security.interceptor.AuthorizationAttributeSourceAdvisor;
+import org.apache.shiro.web.filter.session.NoSessionCreationFilter;
 import org.apache.shiro.web.mgt.DefaultWebSecurityManager;
 import org.apache.shiro.web.session.mgt.DefaultWebSessionManager;
 import org.springframework.context.annotation.Bean;
@@ -37,7 +38,6 @@ public class ShiroConfig {
         DefaultWebSessionManager sessionManager = new DefaultWebSessionManager();
         sessionManager.setSessionValidationSchedulerEnabled(false);
         sessionManager.setSessionIdUrlRewritingEnabled(false);
-
         return sessionManager;
     }
 
@@ -55,9 +55,9 @@ public class ShiroConfig {
         ShiroFilterFactoryBean shiroFilter = new ShiroFilterFactoryBean();
         shiroFilter.setSecurityManager(securityManager);
 
-        //oauth过滤
         Map<String, Filter> filters = new HashMap<>();
         filters.put("oauth2", new Oauth2Filter());
+        filters.put("noSessionCreation", new NoSessionCreationFilter());
         shiroFilter.setFilters(filters);
 
         Map<String, String> filterMap = new LinkedHashMap<>();
@@ -71,7 +71,7 @@ public class ShiroConfig {
         filterMap.put("/captcha", "anon");
         filterMap.put("/favicon.ico", "anon");
         filterMap.put("/", "anon");
-        filterMap.put("/**", "oauth2");
+        filterMap.put("/**", "noSessionCreation,oauth2");
         shiroFilter.setFilterChainDefinitionMap(filterMap);
 
         return shiroFilter;
