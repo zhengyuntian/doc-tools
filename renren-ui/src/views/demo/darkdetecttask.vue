@@ -107,7 +107,7 @@
       <el-table-column prop="updateTime" label="检测时间" header-align="center" align="center" width="180"></el-table-column>
       <el-table-column label="操作" fixed="right" header-align="center" align="center" width="280">
         <template v-slot="scope">
-          <el-button v-if="state.hasPermission('demo:darkdetecttask:info')" type="primary" link @click="downloadHandle(scope.row)">下载</el-button>
+          <el-button v-if="state.hasPermission('demo:darkdetecttask:info')" type="primary" link :loading="downloadingIds.has(scope.row.id)" @click="downloadHandle(scope.row)">下载</el-button>
           <el-button v-if="state.hasPermission('demo:darkdetecttask:info')" type="primary" link @click="detailHandle(scope.row)">详情</el-button>
           <el-button v-if="state.hasPermission('demo:darkdetecttask:update') && scope.row.status === 0" type="success" link @click="startDetectHandle(scope.row)">启动检测</el-button>
           <el-button v-if="state.hasPermission('demo:darkdetecttask:update') && scope.row.status === 1" type="warning" link @click="stopDetectHandle(scope.row)">停止检测</el-button>
@@ -186,9 +186,15 @@ const state = reactive({
 
 const detailVisible = ref(false);
 const detailData = reactive<any>({});
+const downloadingIds = ref<Set<number>>(new Set());
 
-const downloadHandle = (row: any) => {
-  baseService.download('/demo/darkdetecttask/' + row.id + '/download', row.fileName);
+const downloadHandle = async (row: any) => {
+  downloadingIds.value.add(row.id);
+  try {
+    await baseService.download('/demo/darkdetecttask/' + row.id + '/download', row.fileName);
+  } finally {
+    downloadingIds.value.delete(row.id);
+  }
 };
 
 const detailHandle = async (row: any) => {

@@ -5,6 +5,7 @@ import io.renren.modules.demo.engine.model.ParsedDocument;
 import io.renren.modules.demo.engine.model.ParsedImage;
 import io.renren.modules.demo.engine.model.ParsedParagraph;
 import io.renren.modules.demo.engine.model.ParsedPageSetup;
+import io.renren.modules.demo.engine.model.ParsedTable;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -29,8 +30,12 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeSet;
 
 @Component
 public class PdfDocumentParser implements DocumentParser {
@@ -49,6 +54,7 @@ public class PdfDocumentParser implements DocumentParser {
             
             parsePageSetup(document, parsedDoc);
             parseParagraphs(document, parsedDoc);
+            parseTables(document, parsedDoc);
             parseImages(document, parsedDoc);
             buildFullText(parsedDoc);
             identifyFooterPageNumbers(document, parsedDoc);
@@ -283,6 +289,312 @@ public class PdfDocumentParser implements DocumentParser {
         }
         parsedDoc.setFullText(sb.toString());
     }
+
+    private void parseTables(PDDocument document, ParsedDocument parsedDoc) {
+        logger.debug("[PDF表格解析] 开始解析表格...");
+        List<ParsedTable> tables = new ArrayList<>();
+        
+        for (int pageIndex = 0; pageIndex < document.getNumberOfPages(); pageIndex++) {
+            int pageNo = pageIndex + 1;
+            
+            List<List<TextPosition>> allLines = extractAllTextPositions(document, pageNo);
+            
+            if (allLines == null || allLines.isEmpty()) {
+                continue;
+            }
+            
+            List<ParsedTable> pageTables = detectTablesByTextClustering(allLines, pageNo);
+            tables.addAll(pageTables);
+            logger.debug("[PDF表格解析] 页面 {} 通过文本聚类识别到 {} 个表格", pageNo, pageTables.size());
+        }
+        
+        parsedDoc.getTables().addAll(tables);
+        logger.debug("[PDF表格解析] 解析完成，共识别到 {} 个表格", tables.size());
+    }
+
+    private List<List<TextPosition>> extractAllTextPositions(PDDocument document, int pageNo) {
+        try {
+            FormatTextStripper stripper = new FormatTextStripper();
+            stripper.setStartPage(pageNo);
+            stripper.setEndPage(pageNo);
+            stripper.getText(document);
+            return stripper.getLines();
+        } catch (Exception e) {
+            logger.debug("[PDF表格解析] 提取文本位置失败: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private List<ParsedTable> detectTablesByTextClustering(List<List<TextPosition>> allLines, int pageNo) {
+        List<ParsedTable> tables = new ArrayList<>();
+        
+        List<TextPosition> allTextPositions = new ArrayList<>();
+        for (List<TextPosition> line : allLines) {
+            allTextPositions.addAll(line);
+        }
+        
+        if (allTextPositions.size() < 6) {
+            return tables;
+        }
+        
+        List<List<TextPosition>> tableLines = new ArrayList<>();
+        
+        for (List<TextPosition> line : allLines) {
+            if (line.size() < 2) continue;
+            
+            int largeGaps = 0;
+            float prevX = line.get(0).getXDirAdj();
+            for (int j = 1; j < line.size(); j++) {
+                float gap = line.get(j).getXDirAdj() - (prevX + line.get(j-1).getWidthDirAdj());
+                if (gap > 30) {
+                    largeGaps++;
+                }
+                prevX = line.get(j).getXDirAdj();
+            }
+            
+            if (largeGaps >= 1) {
+                tableLines.add(line);
+            }
+        }
+        
+        if (tableLines.size() < 2) {
+            return tables;
+        }
+        
+        Map<Float, Integer> colStartCounts = new HashMap<>();
+        for (List<TextPosition> line : tableLines) {
+            float prevX = line.get(0).getXDirAdj();
+            float colStart = Math.round(prevX);
+            colStartCounts.put(colStart, colStartCounts.getOrDefault(colStart, 0) + 1);
+            
+            for (int j = 1; j < line.size(); j++) {
+                float gap = line.get(j).getXDirAdj() - (prevX + line.get(j-1).getWidthDirAdj());
+                if (gap > 30) {
+                    colStart = Math.round(line.get(j).getXDirAdj());
+                    colStartCounts.put(colStart, colStartCounts.getOrDefault(colStart, 0) + 1);
+                }
+                prevX = line.get(j).getXDirAdj();
+            }
+        }
+        
+        List<Float> colBoundaries = new ArrayList<>();
+        int minOccurrence = tableLines.size() / 2;
+        if (minOccurrence < 1) minOccurrence = 1;
+        
+        for (Map.Entry<Float, Integer> entry : colStartCounts.entrySet()) {
+            if (entry.getValue() >= minOccurrence) {
+                colBoundaries.add(entry.getKey());
+            }
+        }
+        
+        Collections.sort(colBoundaries);
+        
+        if (colBoundaries.size() < 2) {
+            return tables;
+        }
+        
+        List<List<Float>> colGroups = new ArrayList<>();
+        for (int i = 0; i < colBoundaries.size(); i++) {
+            List<Float> colGroup = new ArrayList<>();
+            float left = colBoundaries.get(i);
+            float right = (i < colBoundaries.size() - 1) ? colBoundaries.get(i + 1) - 1 : Float.MAX_VALUE;
+            colGroup.add(left);
+            colGroup.add(right);
+            colGroups.add(colGroup);
+        }
+        
+        TreeSet<Float> tableYPositions = new TreeSet<>();
+        for (List<TextPosition> line : tableLines) {
+            for (TextPosition tp : line) {
+                tableYPositions.add(tp.getYDirAdj());
+            }
+        }
+        
+        List<Float> sortedY = new ArrayList<>(tableYPositions);
+        List<List<Float>> rowGroups = new ArrayList<>();
+        List<Float> currentGroup = new ArrayList<>();
+        float prevY = -1;
+        
+        for (Float y : sortedY) {
+            if (prevY < 0 || Math.abs(y - prevY) < 40) {
+                currentGroup.add(y);
+            } else {
+                if (currentGroup.size() >= 1) {
+                    rowGroups.add(currentGroup);
+                }
+                currentGroup = new ArrayList<>();
+                currentGroup.add(y);
+            }
+            prevY = y;
+        }
+        if (currentGroup.size() >= 1) {
+            rowGroups.add(currentGroup);
+        }
+        
+        if (rowGroups.size() < 2) {
+            return tables;
+        }
+        
+        List<List<TableCell>> tableCells = new ArrayList<>();
+        
+        for (List<Float> rowY : rowGroups) {
+            List<TableCell> rowCells = new ArrayList<>();
+            float rowTop = Collections.max(rowY);
+            float rowBottom = Collections.min(rowY);
+            
+            for (List<Float> colX : colGroups) {
+                float colLeft = colX.get(0);
+                float colRight = colX.get(1);
+                
+                TableCell cell = new TableCell(colLeft, rowBottom, colRight, rowTop);
+                
+                for (TextPosition tp : allTextPositions) {
+                    float tpX = tp.getXDirAdj();
+                    float tpY = tp.getYDirAdj();
+                    float tpWidth = tp.getWidthDirAdj();
+                    float tpHeight = tp.getHeightDir();
+                    
+                    if (tpX >= colLeft - 10 && tpX + tpWidth <= colRight + 10 && 
+                        tpY >= rowBottom - 10 && tpY - tpHeight <= rowTop + 10) {
+                        cell.addText(tp);
+                    }
+                }
+                
+                rowCells.add(cell);
+            }
+            tableCells.add(rowCells);
+        }
+        
+        ParsedTable table = createParsedTable(tableCells, pageNo, tables.size());
+        tables.add(table);
+        
+        return tables;
+    }
+
+    private ParsedTable createParsedTable(List<List<TableCell>> tableCells, int pageNo, int tableIndex) {
+        ParsedTable parsedTable = new ParsedTable();
+        parsedTable.setIndex(tableIndex);
+        parsedTable.setPageNo(pageNo);
+        parsedTable.setRowCount(tableCells.size());
+        
+        if (!tableCells.isEmpty()) {
+            parsedTable.setColCount(tableCells.get(0).size());
+        }
+        
+        List<List<String>> cellTexts = new ArrayList<>();
+        String fontFamily = null;
+        Double fontSize = null;
+        Boolean bold = false;
+        Boolean italic = false;
+        String color = null;
+        Boolean underline = false;
+        Boolean strikethrough = false;
+        
+        for (List<TableCell> row : tableCells) {
+            List<String> rowTexts = new ArrayList<>();
+            for (TableCell cell : row) {
+                String cellText = cell.getText();
+                rowTexts.add(cellText);
+                
+                if (fontFamily == null && !cellText.isEmpty()) {
+                    fontFamily = cell.getFontFamily();
+                    fontSize = cell.getFontSize();
+                    bold = cell.isBold();
+                    italic = cell.isItalic();
+                    color = cell.getColor();
+                    underline = cell.isUnderline();
+                    strikethrough = cell.isStrikethrough();
+                }
+            }
+            cellTexts.add(rowTexts);
+        }
+        
+        parsedTable.setCells(cellTexts);
+        parsedTable.setFontFamily(fontFamily);
+        parsedTable.setFontSize(fontSize);
+        parsedTable.setBold(bold);
+        parsedTable.setItalic(italic);
+        parsedTable.setColor(color != null ? color : "black");
+        parsedTable.setUnderline(underline);
+        parsedTable.setStrikethrough(strikethrough);
+        
+        parsedTable.setVerticalAlign("center");
+        parsedTable.setHorizontalAlign("left");
+        parsedTable.setAlignment("center");
+        
+        return parsedTable;
+    }
+
+    private static class TableCell {
+        float left, bottom, right, top;
+        List<TextPosition> textPositions = new ArrayList<>();
+        
+        TableCell(float left, float bottom, float right, float top) {
+            this.left = left;
+            this.bottom = bottom;
+            this.right = right;
+            this.top = top;
+        }
+        
+        void addText(TextPosition tp) {
+            textPositions.add(tp);
+        }
+        
+        String getText() {
+            Collections.sort(textPositions, Comparator.comparingDouble(tp -> tp.getXDirAdj()));
+            StringBuilder sb = new StringBuilder();
+            for (TextPosition tp : textPositions) {
+                sb.append(tp.getUnicode());
+            }
+            return sb.toString().trim();
+        }
+        
+        String getFontFamily() {
+            if (!textPositions.isEmpty()) {
+                return textPositions.get(0).getFont().getName();
+            }
+            return null;
+        }
+        
+        Double getFontSize() {
+            if (!textPositions.isEmpty()) {
+                return (double) textPositions.get(0).getFontSizeInPt();
+            }
+            return null;
+        }
+        
+        boolean isBold() {
+            for (TextPosition tp : textPositions) {
+                String fontName = tp.getFont().getName().toLowerCase();
+                if (fontName.contains("bold") || fontName.contains("black") || fontName.contains("heavy")) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        boolean isItalic() {
+            for (TextPosition tp : textPositions) {
+                String fontName = tp.getFont().getName().toLowerCase();
+                if (fontName.contains("italic") || fontName.contains("oblique")) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        String getColor() {
+            return "black";
+        }
+        
+        boolean isUnderline() {
+            return false;
+        }
+        
+        boolean isStrikethrough() {
+            return false;
+        }
+    }
     
     private void identifyFooterPageNumbers(PDDocument document, ParsedDocument parsedDoc) {
         try {
@@ -406,88 +718,18 @@ public class PdfDocumentParser implements DocumentParser {
     
     private void extractImagesFromAnnotations(PDPage page, int pageNo, float pageWidth, 
                                               int[] imageIndexRef, ParsedDocument parsedDoc) {
-        try {
-            List<?> annotations = page.getAnnotations();
-            if (annotations == null) return;
-            
-            for (Object annotationObj : annotations) {
-                if (!(annotationObj instanceof org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotation)) {
-                    continue;
-                }
-                
-                org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotation annotation = 
-                    (org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotation) annotationObj;
-                
-                org.apache.pdfbox.cos.COSDictionary dict = annotation.getCOSObject();
-                if (dict == null) continue;
-                
-                org.apache.pdfbox.cos.COSBase appearance = dict.getDictionaryObject(
-                    org.apache.pdfbox.cos.COSName.AP);
-                if (appearance == null || !(appearance instanceof org.apache.pdfbox.cos.COSDictionary)) {
-                    continue;
-                }
-                
-                org.apache.pdfbox.cos.COSDictionary appearanceDict = 
-                    (org.apache.pdfbox.cos.COSDictionary) appearance;
-                
-                org.apache.pdfbox.cos.COSBase normal = appearanceDict.getDictionaryObject(
-                    org.apache.pdfbox.cos.COSName.N);
-                if (normal == null) continue;
-                
-                if (normal instanceof org.apache.pdfbox.cos.COSStream) {
-                    try {
-                        PDFormXObject form = new org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject(
-                            (org.apache.pdfbox.cos.COSStream) normal);
-                        PDResources formResources = form.getResources();
-                        if (formResources != null) {
-                            extractImagesFromResources(formResources, pageNo, pageWidth, imageIndexRef, parsedDoc);
-                        }
-                    } catch (Exception e) {
-                        logger.debug("[PDF解析] 解析注释Form XObject失败: {}", e.getMessage());
-                    }
-                } else if (normal instanceof org.apache.pdfbox.cos.COSDictionary) {
-                    org.apache.pdfbox.cos.COSDictionary normalDict = 
-                        (org.apache.pdfbox.cos.COSDictionary) normal;
-                    for (org.apache.pdfbox.cos.COSName key : normalDict.keySet()) {
-                        org.apache.pdfbox.cos.COSBase obj = normalDict.getDictionaryObject(key);
-                        if (obj instanceof org.apache.pdfbox.cos.COSStream) {
-                            try {
-                                PDFormXObject form = new org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject(
-                                    (org.apache.pdfbox.cos.COSStream) obj);
-                                PDResources formResources = form.getResources();
-                                if (formResources != null) {
-                                    extractImagesFromResources(formResources, pageNo, pageWidth, imageIndexRef, parsedDoc);
-                                }
-                            } catch (Exception e) {
-                                logger.debug("[PDF解析] 解析注释Form XObject失败: {}", e.getMessage());
-                            }
-                        }
-                    }
-                } else if (normal instanceof org.apache.pdfbox.cos.COSName) {
-                    PDResources resources = page.getResources();
-                    if (resources != null) {
-                        try {
-                            PDXObject xobject = resources.getXObject((org.apache.pdfbox.cos.COSName) normal);
-                            if (xobject instanceof PDImageXObject) {
-                                PDImageXObject image = (PDImageXObject) xobject;
-                                createParsedImage(image, pageNo, pageWidth, imageIndexRef, parsedDoc);
-                            } else if (xobject instanceof PDFormXObject) {
-                                PDFormXObject form = (PDFormXObject) xobject;
-                                extractImagesFromResources(form.getResources(), pageNo, pageWidth, imageIndexRef, parsedDoc);
-                            }
-                        } catch (IOException e) {
-                            logger.debug("[PDF解析] 获取注释XObject失败: {}", e.getMessage());
-                        }
-                    }
-                }
-            }
-        } catch (IOException e) {
-            logger.debug("[PDF解析] 从注释提取图片失败: {}", e.getMessage());
-        }
     }
     
     private void createParsedImage(PDImageXObject image, int pageNo, float pageWidth, 
                                    int[] imageIndexRef, ParsedDocument parsedDoc) throws IOException {
+        int width = image.getWidth();
+        int height = image.getHeight();
+        
+        if (width < 50 || height < 50) {
+            logger.debug("[PDF解析] 跳过小图片: {}x{}px", width, height);
+            return;
+        }
+        
         ParsedImage parsedImage = new ParsedImage();
         parsedImage.setIndex(imageIndexRef[0]);
         parsedImage.setPageNo(pageNo);
@@ -506,13 +748,19 @@ public class PdfDocumentParser implements DocumentParser {
         parsedImage.setAlignment(calculateImageAlignment(image, pageWidth));
         
         parsedDoc.getImages().add(parsedImage);
-        logger.debug("[PDF解析] 提取图片: {}", parsedImage.getFileName());
+        logger.debug("[PDF解析] 提取图片: {}, 尺寸: {}x{}px", parsedImage.getFileName(), width, height);
         imageIndexRef[0]++;
     }
     
     private void extractImagesFromResources(PDResources resources, int pageNo, float pageWidth, 
                                             int[] imageIndexRef, ParsedDocument parsedDoc) {
+        extractImagesFromResources(resources, pageNo, pageWidth, imageIndexRef, parsedDoc, 0);
+    }
+    
+    private void extractImagesFromResources(PDResources resources, int pageNo, float pageWidth, 
+                                            int[] imageIndexRef, ParsedDocument parsedDoc, int depth) {
         if (resources == null) return;
+        if (depth > 1) return;
         
         Iterable<COSName> xobjectNames = resources.getXObjectNames();
         if (xobjectNames != null) {
@@ -521,6 +769,14 @@ public class PdfDocumentParser implements DocumentParser {
                     PDXObject xobject = resources.getXObject(name);
                     if (xobject instanceof PDImageXObject) {
                         PDImageXObject image = (PDImageXObject) xobject;
+                        
+                        int width = image.getWidth();
+                        int height = image.getHeight();
+                        
+                        if (width < 50 || height < 50) {
+                            logger.debug("[PDF解析] 跳过小图片: {}x{}px", width, height);
+                            continue;
+                        }
                         
                         ParsedImage parsedImage = new ParsedImage();
                         parsedImage.setIndex(imageIndexRef[0]);
@@ -542,11 +798,12 @@ public class PdfDocumentParser implements DocumentParser {
                         parsedImage.setAlignment(alignment);
                         
                         parsedDoc.getImages().add(parsedImage);
-                        logger.debug("[PDF解析] 提取图片: {}, 对齐方式: {}", parsedImage.getFileName(), alignment);
+                        logger.debug("[PDF解析] 提取图片: {}, 尺寸: {}x{}px, 对齐方式: {}", 
+                            parsedImage.getFileName(), width, height, alignment);
                         imageIndexRef[0]++;
                     } else if (xobject instanceof PDFormXObject) {
                         PDFormXObject form = (PDFormXObject) xobject;
-                        extractImagesFromResources(form.getResources(), pageNo, pageWidth, imageIndexRef, parsedDoc);
+                        extractImagesFromResources(form.getResources(), pageNo, pageWidth, imageIndexRef, parsedDoc, depth + 1);
                     }
                 } catch (IOException e) {
                     logger.error("[PDF解析] 提取图片失败: {}", e.getMessage());

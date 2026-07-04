@@ -10,7 +10,7 @@ ENV ai.djl.default_engine=OnnxRuntime
 ENV DJL_DEFAULT_ENGINE=OnnxRuntime
 ENV ai.djl.onnx.disable_alternative=true
 
-RUN mkdir -p /app /app/models /tmp/djl_cache /tmp/pytorch_cache
+RUN mkdir -p /app /app/models /app/upload /tmp/djl_cache /tmp/pytorch_cache
 
 COPY ./bin /app
 COPY ./conf /app/conf

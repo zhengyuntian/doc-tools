@@ -7,7 +7,7 @@ export ai.djl.default_engine=OnnxRuntime
 export DJL_DEFAULT_ENGINE=OnnxRuntime
 export ai.djl.onnx.disable_alternative=true
 
-mkdir -p /tmp/djl_cache /tmp/pytorch_cache
+mkdir -p /tmp/djl_cache /tmp/pytorch_cache /app/upload
 
 MODEL_PATH="/app/models"
 

@@ -71,36 +71,40 @@ export default {
    * @param path 下载路径
    * @param fileName 文件名（可选，用于设置下载文件名）
    */
-  download(path: string, fileName?: string): void {
-    const token = getToken();
-    const url = (import.meta.env.VITE_APP_API || '') + path;
-    
-    fetch(url, {
-      method: 'GET',
-      headers: {
-        'X-Requested-With': 'XMLHttpRequest',
-        'token': token || ''
-      }
-    })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error('下载失败');
-      }
-      return response.blob();
-    })
-    .then(blob => {
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = fileName || 'download';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(downloadUrl);
-    })
-    .catch(error => {
-      console.error('下载失败:', error);
-      ElMessage.error('下载失败');
+  download(path: string, fileName?: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const token = getToken();
+      const url = (import.meta.env.VITE_APP_API || '') + path;
+      
+      fetch(url, {
+        method: 'GET',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'token': token || ''
+        }
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('下载失败');
+        }
+        return response.blob();
+      })
+      .then(blob => {
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = fileName || 'download';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(downloadUrl);
+        resolve();
+      })
+      .catch(error => {
+        console.error('下载失败:', error);
+        ElMessage.error('下载失败');
+        reject(error);
+      });
     });
   }
 };

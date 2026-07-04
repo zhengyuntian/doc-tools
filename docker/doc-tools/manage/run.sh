@@ -16,10 +16,6 @@ docker build -f Dockerfile -t $projectName:$version .
 
 docker run --name $projectName --privileged=true --restart=always \
   -p $externalPort:$internalPort \
-  -e SPRING_PROFILES_ACTIVE=prod \
-  -e SPRING_DATASOURCE_DRUID_URL=jdbc:mysql://host.docker.internal:3306/renren_security?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true \
-  -e SPRING_DATASOURCE_DRUID_USERNAME=renren \
-  -e SPRING_DATASOURCE_DRUID_PASSWORD=123456 \
   -e PADDLE_ENABLED=true \
   -e PADDLE_MODEL_PATH=/app/models \
   -e DJL_CACHE_DIR=/tmp/djl_cache \
